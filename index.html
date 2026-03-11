@@ -581,6 +581,29 @@
     .tabs::-webkit-scrollbar { display: none; }
     .tab { padding: 6px 12px; font-size: 12px; white-space: nowrap; flex-shrink: 0; }
 
+    /* VIX/환율/PCR 카드: 모바일에서 1열 */
+    .vix-fx-grid {
+      grid-template-columns: 1fr !important;
+      gap: 8px !important;
+    }
+
+    /* 카드 내부: 가로 배치 유지하되 넘치는 텍스트 처리 */
+    .vix-fx-grid .summary-card {
+      gap: 12px !important;
+    }
+    .vix-fx-grid .summary-card .card-value {
+      font-size: 22px !important;
+    }
+    .vix-fx-grid .summary-card .card-sub {
+      font-size: 12px !important;
+    }
+
+    /* 52주 바 레이블 overflow 방지 */
+    #vix52Label, #fx52Label {
+      font-size: 10px !important;
+      white-space: nowrap;
+    }
+
     /* 콘텐츠 */
     .content { padding: 10px; }
     .card-value { font-size: 20px !important; }
