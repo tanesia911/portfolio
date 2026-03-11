@@ -821,6 +821,31 @@
       </div>
     </div>
 
+    <!-- 📊 자산 차트 -->
+    <div class="section">
+      <div class="section-title" style="display:flex;align-items:center;justify-content:space-between">
+        <span>📊 자산 배분 현황</span>
+        <div style="display:flex;gap:6px">
+          <button id="chartViewBtn1" onclick="setChartView('group')"
+            style="font-size:11px;padding:3px 10px;border-radius:6px;cursor:pointer;font-family:inherit;font-weight:600;background:var(--accent);border:none;color:#000;">자산군</button>
+          <button id="chartViewBtn2" onclick="setChartView('account')"
+            style="font-size:11px;padding:3px 10px;border-radius:6px;cursor:pointer;font-family:inherit;font-weight:600;background:var(--surface2);border:1px solid var(--border);color:var(--text2);">계좌</button>
+        </div>
+      </div>
+      <div style="display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap">
+        <!-- 도넛 차트 -->
+        <div style="position:relative;flex-shrink:0">
+          <canvas id="donutChart" width="200" height="200" style="display:block"></canvas>
+          <div id="donutCenter" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;pointer-events:none">
+            <div id="donutCenterLabel" style="font-size:11px;color:var(--text3)">총 평가금</div>
+            <div id="donutCenterValue" style="font-size:15px;font-weight:700;color:var(--text);font-family:'JetBrains Mono',monospace">-</div>
+          </div>
+        </div>
+        <!-- 범례 + 바 차트 -->
+        <div id="chartLegend" style="flex:1;min-width:160px;display:flex;flex-direction:column;gap:7px;padding-top:8px"></div>
+      </div>
+    </div>
+
     <!-- 환헤지 -->
     <div class="section">
       <div class="section-title">환헤지 분석 <span style="font-size:11px;color:var(--text3);font-weight:400">달러 노출 비중</span></div>
@@ -1205,7 +1230,13 @@ function openDB() {
   });
 }
 
-async function save() {
+// ─── save debounce: 300ms 내 연속 호출은 마지막 1번만 실행 ───
+let _saveTimer = null;
+function save() {
+  if (_saveTimer) clearTimeout(_saveTimer);
+  _saveTimer = setTimeout(_doSave, 300);
+}
+async function _doSave() {
   try {
     const db = await openDB();
     return new Promise((resolve, reject) => {
@@ -1215,9 +1246,7 @@ async function save() {
       tx.onerror = () => reject(tx.error);
     });
   } catch(e) {
-    // IndexedDB 실패 시 localStorage 폴백
     try { localStorage.setItem(DB_KEY, JSON.stringify(state)); } catch(_) {}
-    // 둘 다 실패해도 (인앱브라우저 등) 메모리에는 유지되므로 앱은 계속 동작
   }
 }
 
@@ -1368,12 +1397,32 @@ async function fetchKrxGoldPrice() {
 }
 
 // ===== 가격 조회 =====
+// 가격 메모리 캐시 (5분 TTL)
+const _priceCache = {};  // { ticker: { price, prevClose, currency, ts } }
+const PRICE_CACHE_TTL = 5 * 60 * 1000;
+
 async function fetchPrices() {
   const tickers = [...new Set(state.stocks.map(s => s.ticker))];
   const results = {};
+  const now = Date.now();
+
+  // 캐시 히트 먼저 처리
+  const cacheMiss = [];
+  tickers.forEach(t => {
+    const c = _priceCache[t];
+    if (c && (now - c.ts) < PRICE_CACHE_TTL) {
+      results[t] = { price: c.price, prevClose: c.prevClose, currency: c.currency };
+    } else {
+      cacheMiss.push(t);
+    }
+  });
+  if (cacheMiss.length === 0) return results;
+  const tickers_orig = tickers;
+  // 이하 cacheMiss 티커만 실제 조회
+  const missTickers = cacheMiss;
 
   // KRX-GOLD 커스텀 티커: GC=F → 환율 환산
-  const krxGoldTickers = tickers.filter(t => t.toUpperCase() === 'KRX-GOLD');
+  const krxGoldTickers = missTickers.filter(t => t.toUpperCase() === 'KRX-GOLD');
   if (krxGoldTickers.length > 0) {
     const goldResult = await fetchKrxGoldPrice();
     if (goldResult) {
@@ -1382,8 +1431,8 @@ async function fetchPrices() {
   }
 
   // 업비트 KRW- 티커 묶어서 한 번에 조회
-  const upbitTickers = tickers.filter(t => t.toUpperCase().startsWith('KRW-'));
-  const yahooTickers = tickers.filter(t => !t.toUpperCase().startsWith('KRW-') && t.toUpperCase() !== 'KRX-GOLD');
+  const upbitTickers = missTickers.filter(t => t.toUpperCase().startsWith('KRW-'));
+  const yahooTickers = missTickers.filter(t => !t.toUpperCase().startsWith('KRW-') && t.toUpperCase() !== 'KRX-GOLD');
 
   if (upbitTickers.length > 0) {
     try {
@@ -1419,6 +1468,11 @@ async function fetchPrices() {
     }
   }));
 
+  // 새로 조회된 결과를 캐시에 저장
+  const now2 = Date.now();
+  Object.entries(results).forEach(([t, v]) => {
+    if (v) _priceCache[t] = { ...v, ts: now2 };
+  });
   return results;
 }
 
@@ -1498,6 +1552,8 @@ let _refreshing = false;
 async function refreshAll() {
   if (_refreshing) return; // 중복 실행 방지
   _refreshing = true;
+  // 수동 새로고침 시 가격 캐시 무효화
+  Object.keys(_priceCache).forEach(k => delete _priceCache[k]);
 
   const btn = document.getElementById('refreshBtn');
   const icon = document.getElementById('refreshIcon');
@@ -1592,9 +1648,25 @@ function getTotalCost(includeExcluded = false) {
 }
 
 // ===== 렌더링 =====
+// 탭별 렌더 함수 매핑
+const _tabRenderMap = {
+  'dashboard':  [renderDashboard, updateFGMeter, renderVixFxPanel, renderHedgePanel],
+  'holdings':   [renderHoldings],
+  'rebalance':  [renderRebalAccountBtns],
+  'plan':       [renderRebalAccountBtns],
+  'dividend':   [renderDividendTab],
+  'settings':   []
+};
+
+let _renderTimer = null;
 function renderAll() {
-  const fns = [renderDashboard, renderHoldings, updateFGMeter, renderVixFxPanel, renderHedgePanel, renderRebalAccountBtns, renderDividendTab];
-  fns.forEach(fn => { try { fn(); } catch(e) { console.error(fn.name + ' 오류:', e); } });
+  if (_renderTimer) cancelAnimationFrame(_renderTimer);
+  _renderTimer = requestAnimationFrame(_doRenderAll);
+}
+function _doRenderAll() {
+  // 항상 실행해야 하는 함수 (모든 탭에 영향)
+  const always = [renderDashboard, updateFGMeter, renderVixFxPanel, renderHedgePanel, renderRebalAccountBtns, renderHoldings, renderDividendTab];
+  always.forEach(fn => { try { fn(); } catch(e) { console.error(fn.name + ' 오류:', e); } });
 }
 
 function renderVixFxPanel() {
@@ -1763,6 +1835,122 @@ function renderAssetTable() {
       });
     }
   }
+  // 차트 업데이트
+  renderDashboardCharts();
+}
+
+// ─── 차트 뷰 상태 ───────────────────────────────
+let _chartView = 'group'; // 'group' | 'account'
+
+function setChartView(v) {
+  _chartView = v;
+  const b1 = document.getElementById('chartViewBtn1');
+  const b2 = document.getElementById('chartViewBtn2');
+  if (b1 && b2) {
+    if (v === 'group') {
+      b1.style.background = 'var(--accent)'; b1.style.color = '#000'; b1.style.border = 'none';
+      b2.style.background = 'var(--surface2)'; b2.style.color = 'var(--text2)'; b2.style.border = '1px solid var(--border)';
+    } else {
+      b2.style.background = 'var(--accent)'; b2.style.color = '#000'; b2.style.border = 'none';
+      b1.style.background = 'var(--surface2)'; b1.style.color = 'var(--text2)'; b1.style.border = '1px solid var(--border)';
+    }
+  }
+  renderDashboardCharts();
+}
+
+function renderDashboardCharts() {
+  const canvas = document.getElementById('donutChart');
+  if (!canvas) return;
+  const totalValue = getTotalValue() || 1;
+
+  // 팔레트
+  const PALETTE = [
+    '#f5c518','#4fc3f7','#81c784','#e57373','#ba68c8',
+    '#ffb74d','#4dd0e1','#aed581','#f06292','#90a4ae'
+  ];
+
+  // 데이터 구성
+  let segments = [];
+  if (_chartView === 'group') {
+    const groups = {};
+    state.stocks.forEach(s => {
+      const k = s.group || '기타';
+      if (!groups[k]) groups[k] = 0;
+      groups[k] += getStockValue(s);
+    });
+    segments = Object.entries(groups)
+      .map(([label, value]) => ({ label, value }))
+      .sort((a, b) => b.value - a.value);
+  } else {
+    const accs = {};
+    state.stocks.forEach(s => {
+      if (!accs[s.account]) accs[s.account] = 0;
+      accs[s.account] += getStockValue(s);
+    });
+    segments = Object.entries(accs)
+      .map(([label, value]) => ({ label, value }))
+      .sort((a, b) => b.value - a.value);
+  }
+
+  if (segments.length === 0) return;
+  segments.forEach((s, i) => { s.color = PALETTE[i % PALETTE.length]; });
+
+  // ── 도넛 차트 ──
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  const cx = W / 2, cy = H / 2;
+  const R = Math.min(W, H) / 2 - 8;
+  const r = R * 0.58;
+
+  ctx.clearRect(0, 0, W, H);
+
+  let startAngle = -Math.PI / 2;
+  segments.forEach(seg => {
+    const slice = (seg.value / totalValue) * Math.PI * 2;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.arc(cx, cy, R, startAngle, startAngle + slice);
+    ctx.closePath();
+    ctx.fillStyle = seg.color;
+    ctx.fill();
+    startAngle += slice;
+  });
+
+  // 내부 원 (도넛 홀)
+  const isDark = !document.body.classList.contains('light-mode');
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.fillStyle = isDark ? '#0d0d14' : '#f4f6f9';
+  ctx.fill();
+
+  // 중앙 텍스트 업데이트
+  const centerLabel = document.getElementById('donutCenterLabel');
+  const centerValue = document.getElementById('donutCenterValue');
+  if (centerLabel) centerLabel.textContent = _chartView === 'group' ? '자산군' : '계좌';
+  if (centerValue) centerValue.textContent = fmt(totalValue);
+
+  // ── 범례 + 가로 바 ──
+  const legend = document.getElementById('chartLegend');
+  if (!legend) return;
+  legend.innerHTML = segments.map(seg => {
+    const pct = totalValue > 0 ? (seg.value / totalValue * 100) : 0;
+    return `
+      <div style="display:flex;flex-direction:column;gap:3px">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+          <div style="display:flex;align-items:center;gap:6px;min-width:0">
+            <span style="width:10px;height:10px;border-radius:50%;background:${seg.color};flex-shrink:0;display:inline-block"></span>
+            <span style="font-size:12px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:110px">${seg.label}</span>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;flex-shrink:0">
+            <span style="font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--text3)">${fmt(seg.value)}</span>
+            <span style="font-size:12px;font-weight:700;font-family:'JetBrains Mono',monospace;color:${seg.color};min-width:38px;text-align:right">${pct.toFixed(1)}%</span>
+          </div>
+        </div>
+        <div style="height:5px;background:var(--border);border-radius:3px;overflow:hidden">
+          <div style="height:100%;border-radius:3px;background:${seg.color};width:${pct.toFixed(1)}%;transition:width 0.5s ease"></div>
+        </div>
+      </div>`;
+  }).join('');
 }
 
 function renderDashboard() {
@@ -2011,7 +2199,8 @@ function renderHoldings() {
           <td class="mono">${hasPriceData(s) ? fmt(s._value) : '<span style="color:var(--yellow)">-</span>'}</td>
           <td class="mono ${s._profit>=0?'pos':'neg'}">${hasPriceData(s) ? (s._profit>=0?'+':'')+fmt(s._profit) : '<span style="color:var(--yellow)">-</span>'}</td>
           <td class="mono ${s._pct>=0?'pos':'neg'}">${hasPriceData(s) ? (s._pct>=0?'+':'')+s._pct.toFixed(2)+'%' : '<span style="color:var(--yellow)">-</span>'}</td>
-          <td>
+          <td style="white-space:nowrap">
+            <span onclick="copyStock(${i})" style="cursor:pointer;color:var(--text2);margin-right:6px" title="종목 복사">📋</span>
             <span onclick="editStock(${i})" style="cursor:pointer;color:var(--text2);margin-right:6px" title="수정">✏️</span>
             <span onclick="deleteStock(${i})" style="cursor:pointer;color:var(--red)" title="삭제">🗑</span>
           </td>
@@ -2687,6 +2876,8 @@ function applyTheme() {
   const lbl  = document.getElementById('themeLabel');
   if (icon) icon.textContent = state.theme === 'light' ? '☀️' : '🌙';
   if (lbl)  lbl.textContent  = state.theme === 'light' ? '라이트' : '다크';
+  // 테마 변경 시 도넛 배경색 갱신
+  setTimeout(() => renderDashboardCharts(), 50);
 }
 
 // ===== 숫자 단위 =====
@@ -2845,8 +3036,11 @@ function saveStock() {
   };
 
   if (idx >= 0) {
+    const oldTicker = state.stocks[idx].ticker;
     stock.id = state.stocks[idx].id;
     state.stocks[idx] = stock;
+    // 티커가 바뀌면 해당 캐시 무효화
+    if (oldTicker !== stock.ticker) delete _priceCache[oldTicker];
     showToast('✅ 종목 수정 완료');
   } else {
     state.stocks.push(stock);
@@ -2865,6 +3059,33 @@ function deleteStock(i) {
   save();
   renderAll();
   showToast('🗑 종목 삭제됨');
+}
+
+function copyStock(i) {
+  const src = state.stocks[i];
+  // 깊은 복사 후 이름에 "(복사)" 붙이기
+  const copy = JSON.parse(JSON.stringify(src));
+  copy.name = src.name + ' (복사)';
+  // _divManual, 내부 캐시 키 제거
+  delete copy._divManual;
+
+  // 같은 계좌의 바로 다음 위치에 삽입
+  state.stocks.splice(i + 1, 0, copy);
+  save();
+  renderAll();
+
+  // 복사된 행을 잠깐 하이라이트
+  setTimeout(() => {
+    const row = document.getElementById(`stock-row-${i + 1}`);
+    if (row) {
+      row.style.transition = 'background 0.3s';
+      row.style.background = 'rgba(245,197,24,0.15)';
+      setTimeout(() => { row.style.background = ''; }, 1200);
+      row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, 80);
+
+  showToast(`📋 "${src.name}" 복사됨 — 이름·수량·단가를 수정해주세요`);
 }
 
 // ===== 자산군 관리 =====
@@ -3163,7 +3384,10 @@ function renderAccountList() {
         ondrop="onAccDrop(event,${i})"
         ondragend="onAccDragEnd(event)">
         <span style="color:var(--text3);cursor:grab;font-size:16px;line-height:1;user-select:none">⠿</span>
-        <span style="font-weight:600;min-width:120px;${excluded?'color:var(--text3)':''}">${acc}${excluded?' <span style="font-size:10px;color:var(--yellow)">[독립]</span>':''}</span>
+        <span id="accName_${i}"
+          onclick="startRenameAccount(${i}, this)"
+          style="font-weight:600;min-width:120px;cursor:pointer;${excluded?'color:var(--text3)':''}"
+          title="클릭해서 이름 변경">${acc}${excluded?' <span style="font-size:10px;color:var(--yellow)">[독립]</span>':''}</span>
         <div style="display:flex;align-items:center;gap:6px;flex:1;${excluded?'opacity:0.4;pointer-events:none':''}">
           <input type="number" min="0" max="100" step="1" value="${w}"
             oninput="updateAccountWeight('${acc}', this.value)"
@@ -3288,11 +3512,10 @@ function deleteAccount(i) {
   showToast(`🗑 "${name}" 계좌 삭제됨`);
 }
 
-function renameAccount(i) {
+function _doRenameAccount(i, newName) {
   const oldName = state.accounts[i];
-  const newName = prompt('새 계좌명을 입력하세요:', oldName);
-  if (!newName || newName.trim() === oldName) return;
   const trimmed = newName.trim();
+  if (!trimmed || trimmed === oldName) return;
   if (state.accounts.includes(trimmed)) { showToast('⚠️ 이미 존재하는 계좌명입니다'); return; }
   state.accounts[i] = trimmed;
   state.stocks.forEach(s => { if (s.account === oldName) s.account = trimmed; });
@@ -3300,11 +3523,43 @@ function renameAccount(i) {
     state.accountWeights[trimmed] = state.accountWeights[oldName] ?? 0;
     delete state.accountWeights[oldName];
   }
+  if (state.excludedAccounts) {
+    const ei = state.excludedAccounts.indexOf(oldName);
+    if (ei >= 0) state.excludedAccounts[ei] = trimmed;
+  }
   save();
   renderAccountList();
   populateAccountSelect();
   renderAll();
   showToast(`✅ "${oldName}" → "${trimmed}" 변경됨`);
+}
+
+function startRenameAccount(i, spanEl) {
+  // 이미 편집 중이면 무시
+  if (spanEl.querySelector('input')) return;
+  const oldName = state.accounts[i];
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.value = oldName;
+  input.style.cssText = 'font-size:14px;font-weight:600;font-family:inherit;background:var(--bg);border:1px solid var(--accent);border-radius:6px;padding:2px 8px;color:var(--text);outline:none;width:130px;';
+  spanEl.innerHTML = '';
+  spanEl.appendChild(input);
+  input.focus();
+  input.select();
+
+  const commit = () => { _doRenameAccount(i, input.value); };
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); commit(); }
+    if (e.key === 'Escape') { renderAccountList(); }
+  });
+  input.addEventListener('blur', commit);
+}
+
+// 하위호환 유지
+function renameAccount(i) {
+  const oldName = state.accounts[i];
+  const newName = prompt('새 계좌명을 입력하세요:', oldName);
+  if (newName) _doRenameAccount(i, newName);
 }
 
 // ===== 설정 =====
@@ -3511,7 +3766,7 @@ function startAutoRefresh() {
   stopAutoRefresh();
   _autoRefreshTimer = setInterval(() => {
     if (!document.hidden) refreshAll();
-  }, 30000);
+  }, 60000); // 60초 (가격 캐시 5분 TTL 고려)
 }
 function stopAutoRefresh() {
   if (_autoRefreshTimer) { clearInterval(_autoRefreshTimer); _autoRefreshTimer = null; }
