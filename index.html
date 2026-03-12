@@ -815,24 +815,28 @@
     <!-- 매매신호 패널 -->
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px;margin-bottom:20px" id="signalPanel">
 
-      <!-- 장단기 금리차 카드 -->
+      <!-- 10년물 금리 카드 -->
       <div class="summary-card" style="display:flex;flex-direction:column;gap:8px">
         <div style="display:flex;align-items:center;justify-content:space-between">
-          <div class="card-label">📐 장단기 금리차</div>
+          <div class="card-label">📐 미국 10년물 금리</div>
           <div id="yieldSignalBadge" style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;background:var(--surface2);color:var(--text2)">-</div>
         </div>
-        <div style="display:flex;align-items:baseline;gap:8px">
+        <div style="display:flex;align-items:baseline;gap:4px">
           <div class="card-value mono" id="yieldSpread" style="font-size:24px">-</div>
-          <div style="font-size:11px;color:var(--text3)">%p</div>
+          <div style="font-size:13px;color:var(--text3)">%</div>
+          <div id="yieldTrend" style="font-size:12px;margin-left:6px">-</div>
         </div>
         <div style="font-size:10px;color:var(--text3);line-height:1.5">
-          10년물 <span id="yield10y" style="color:var(--text)">-</span>% · <span id="yield2yLabel">3개월물</span> <span id="yield2y" style="color:var(--text)">-</span>%<br>
+          52주: <span id="yield10y" style="color:var(--text)">-</span>% ~ <span id="yield2y" style="color:var(--text)">-</span>%<br>
           <span id="yieldDesc" style="color:var(--text2)">-</span>
         </div>
-        <div style="height:4px;background:var(--border);border-radius:2px;overflow:hidden">
-          <div id="yieldBar" style="height:100%;border-radius:2px;transition:width 0.5s,background 0.5s;width:50%;background:var(--yellow)"></div>
+        <div style="height:4px;background:linear-gradient(90deg,var(--green),var(--yellow),var(--red));border-radius:2px;position:relative;overflow:visible">
+          <div id="yieldBar" style="position:absolute;top:-3px;width:6px;height:10px;background:white;border-radius:2px;box-shadow:0 0 3px rgba(0,0,0,0.4);transform:translateX(-50%);left:50%;transition:left 0.5s ease"></div>
         </div>
-        <div style="font-size:10px;color:var(--text3);line-height:1.4">역전 → 경기침체 선행지표.<br>음수 지속 후 회복 구간이 가장 위험</div>
+        <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--text3);margin-top:3px">
+          <span>저금리</span><span>중립</span><span>고금리</span>
+        </div>
+        <div style="font-size:10px;color:var(--text3);line-height:1.4">4.5%↑ 주의 · 5%↑ 위험 · 3%↓ 완화.<br>고금리 = 주식 밸류에이션 부담</div>
       </div>
 
       <!-- HYG 신용시장 카드 -->
@@ -1741,17 +1745,17 @@ async function fetchKoreanFearGreed() {
 // 장단기 금리차 (10년 - 2년 국채)
 // ══════════════════════════════════════════════════════════
 async function fetchYieldSpread() {
+  // ^TNX = 10년물, ^IRX = 3개월물(13주 T-bill)
+  // 10년-3개월 스프레드 = 연준이 공식 사용하는 경기침체 선행지표
   try {
-    // ^TNX = 10년물, ^IRX = 3개월물 (^TWO 는 Yahoo에서 미지원)
-    // 10년-3개월 스프레드 = 뉴욕 연방준비은행이 경기침체 예측에 사용하는 방식
     const [d10, d3m] = await Promise.all([
-      fetchViaProxy('https://query1.finance.yahoo.com/v8/finance/chart/%5ETNX?interval=1d&range=5d', 10000),
-      fetchViaProxy('https://query1.finance.yahoo.com/v8/finance/chart/%5EIRX?interval=1d&range=5d', 10000)
+      fetchViaProxy('https://query1.finance.yahoo.com/v8/finance/chart/%5ETNX?interval=1d&range=5d', 8000),
+      fetchViaProxy('https://query1.finance.yahoo.com/v8/finance/chart/%5EIRX?interval=1d&range=5d', 8000)
     ]);
     const y10 = d10?.chart?.result?.[0]?.meta?.regularMarketPrice;
     const y3m = d3m?.chart?.result?.[0]?.meta?.regularMarketPrice;
     if (!y10 || !y3m) return null;
-    return { y10, y2: y3m, label2: '3개월물', spread: parseFloat((y10 - y3m).toFixed(3)) };
+    return { y10, y2: y3m, spread: parseFloat((y10 - y3m).toFixed(3)) };
   } catch(e) { return null; }
 }
 
@@ -1760,18 +1764,25 @@ async function fetchYieldSpread() {
 // ══════════════════════════════════════════════════════════
 async function fetchHYG() {
   try {
-    const data = await fetchViaProxy(
-      'https://query1.finance.yahoo.com/v8/finance/chart/HYG?interval=1d&range=1y', 15000
-    );
+    let data = null;
+    for (const host of ['query1', 'query2']) {
+      for (const range of ['1y', '6mo', '1mo']) {
+        const url = `https://${host}.finance.yahoo.com/v8/finance/chart/HYG?interval=1d&range=${range}`;
+        data = await fetchViaProxy(url, 12000);
+        if (data?.chart?.result?.[0]?.meta?.regularMarketPrice) break;
+      }
+      if (data?.chart?.result?.[0]?.meta?.regularMarketPrice) break;
+    }
     const result = data?.chart?.result?.[0];
     if (!result) return null;
     const meta = result.meta;
-    const closes = result.indicators?.quote?.[0]?.close?.filter(v => v != null) || [];
-    if (!closes.length) return null;
     const price = meta.regularMarketPrice;
+    if (!price) return null;
     const prevClose = meta.previousClose || meta.chartPreviousClose;
-    const low52 = Math.min(...closes);
-    const high52 = Math.max(...closes);
+    const closes = result.indicators?.quote?.[0]?.close?.filter(v => v != null) || [];
+    // meta 52주 고저 우선 사용 (더 안정적)
+    const low52  = meta.fiftyTwoWeekLow  || (closes.length ? Math.min(...closes) : price * 0.92);
+    const high52 = meta.fiftyTwoWeekHigh || (closes.length ? Math.max(...closes) : price * 1.08);
     const pos52 = high52 > low52 ? (price - low52) / (high52 - low52) : 0.5;
     return { price, prevClose, low52, high52, pos52 };
   } catch(e) { return null; }
@@ -1782,9 +1793,12 @@ async function fetchHYG() {
 // ══════════════════════════════════════════════════════════
 async function fetchSP500Trend() {
   try {
-    const data = await fetchViaProxy(
-      'https://query1.finance.yahoo.com/v8/finance/chart/%5EGSPC?interval=1d&range=1y', 15000
-    );
+    let data = null;
+    for (const host of ['query1', 'query2']) {
+      data = await fetchViaProxy(
+        `https://${host}.finance.yahoo.com/v8/finance/chart/%5EGSPC?interval=1d&range=1y`, 15000);
+      if (data?.chart?.result?.[0]?.meta?.regularMarketPrice) break;
+    }
     const result = data?.chart?.result?.[0];
     if (!result) return null;
     const meta = result.meta;
@@ -1804,152 +1818,132 @@ async function fetchSP500Trend() {
 // 종합 매매신호 계산
 // ══════════════════════════════════════════════════════════
 function calcMasterSignal() {
-  const fg = state.fearGreed;
+  const fg  = state.fearGreed;
   const vix = state.vix?.price;
   const pcr = state.pcr?.price;
-  const ys = state.yieldSpread;
+  const ys  = state.yieldSpread;   // { y10, pos52, trend, spread }
   const hyg = state.hygData;
-  const sp = state.spTrend;
+  const sp  = state.spTrend;
 
   let totalScore = 0, totalWeight = 0;
   const filters = [];
 
-  // ── 레이어 3: 심리 점수 (F&G + VIX + PCR) ──────────────
-  // F&G → 공포 점수 (낮을수록 공포 = 매수)
+  // ── 심리 점수 (F&G 35% + VIX 30% + PCR 20%) ────────────
   if (fg != null) {
-    const fgScore = 100 - fg; // F&G 낮을수록 공포 = 매수신호
-    totalScore += fgScore * 0.35;
+    // F&G 낮을수록(공포) 매수 → score 높음
+    totalScore += (100 - fg) * 0.35;
     totalWeight += 0.35;
   }
-  // VIX → 공포 점수
   if (vix != null) {
-    const vixScore = vix <= 12 ? 0
-      : vix <= 16 ? ((vix-12)/4)*25
-      : vix <= 20 ? 25 + ((vix-16)/4)*25
-      : vix <= 30 ? 50 + ((vix-20)/10)*30
-      : vix <= 40 ? 80 + ((vix-30)/10)*15
+    const vixScore = vix <= 12 ? 5
+      : vix <= 16 ? 5 + (vix-12)/4*20
+      : vix <= 20 ? 25 + (vix-16)/4*25
+      : vix <= 30 ? 50 + (vix-20)/10*30
+      : vix <= 40 ? 80 + (vix-30)/10*15
       : 95;
     totalScore += vixScore * 0.30;
     totalWeight += 0.30;
   }
-  // PCR → 공포 점수
   if (pcr != null) {
-    const pcrScore = pcr <= 0.5 ? 0
-      : pcr <= 0.7 ? ((pcr-0.5)/0.2)*30
-      : pcr <= 0.85 ? 30 + ((pcr-0.7)/0.15)*20
-      : pcr <= 1.0 ? 50 + ((pcr-0.85)/0.15)*25
-      : pcr <= 1.2 ? 75 + ((pcr-1.0)/0.2)*20
-      : 95;
+    const pcrScore = pcr <= 0.5 ? 5
+      : pcr <= 0.7 ? 5 + (pcr-0.5)/0.2*25
+      : pcr <= 0.85 ? 30 + (pcr-0.7)/0.15*20
+      : pcr <= 1.0  ? 50 + (pcr-0.85)/0.15*25
+      : pcr <= 1.2  ? 75 + (pcr-1.0)/0.2*18
+      : 93;
     totalScore += pcrScore * 0.20;
     totalWeight += 0.20;
   }
+  const baseScore = totalWeight > 0 ? totalScore / totalWeight : 50;
 
-  // 데이터 없으면 가중치 기준으로 정규화
-  let baseScore = totalWeight > 0 ? totalScore / totalWeight : 50;
-
-  // ── 레이어 1: 구조 필터 (장단기 금리차) ─────────────────
-  let yieldAdj = 0;
-  if (ys != null) {
-    if (ys.spread < 0) {
-      // 역전 중 → 경계 (1단계 하향)
-      yieldAdj = -12;
-      filters.push('⚠️ 금리차 역전 중');
-    } else if (ys.spread < 0.3 && ys.spread >= 0) {
-      // 역전 막 해소 → 가장 위험한 구간
-      yieldAdj = -8;
-      filters.push('⚠️ 금리차 역전 해소 직후 (위험 구간)');
-    } else if (ys.spread > 1.0) {
-      // 정상 스프레드 → 긍정적
-      yieldAdj = +5;
-    }
+  // ── 구조 필터 1: 10년물 금리 수준 ───────────────────────
+  let rateAdj = 0;
+  if (ys?.y10 != null) {
+    const r = ys.y10;
+    if (r >= 5.0)      { rateAdj = -15; filters.push('🚨 10년물 5%↑ — 주식 밸류에이션 위험'); }
+    else if (r >= 4.5) { rateAdj = -8;  filters.push('⚠️ 10년물 4.5%↑ — 성장주 부담'); }
+    else if (r <= 3.0) { rateAdj = +5; }  // 저금리 = 긍정
   }
 
-  // ── 레이어 2: 추세 필터 (S&P500 200일 MA) ───────────────
+  // ── 구조 필터 2: S&P500 200일 MA 추세 ───────────────────
   let trendAdj = 0;
-  if (sp != null) {
-    if (sp.vsMa < -5) {
-      // 200일 MA 5% 이상 아래 → 하락추세, 매수신호 억제
-      trendAdj = -15;
-      filters.push('🔻 200MA 하향 추세 (매수신호 억제)');
-    } else if (sp.vsMa < 0) {
-      trendAdj = -5;
-      filters.push('📉 200MA 소폭 하회');
-    } else if (sp.vsMa > 5) {
-      trendAdj = +5;
-    }
+  if (sp?.vsMa != null) {
+    if (sp.vsMa < -5)      { trendAdj = -15; filters.push('🔻 S&P 200MA 5%↑ 하회 — 하락추세'); }
+    else if (sp.vsMa < 0)  { trendAdj = -5;  filters.push('📉 S&P 200MA 소폭 하회'); }
+    else if (sp.vsMa > 5)  { trendAdj = +5; }
   }
 
-  // ── 레이어 4: 신용 경고 (HYG) ───────────────────────────
+  // ── 신용 필터: HYG ──────────────────────────────────────
   let creditAdj = 0;
-  if (hyg != null) {
-    if (hyg.pos52 < 0.1) {
-      creditAdj = -10;
-      filters.push('🚨 HYG 52주 저점 근처 (신용위기 경고)');
-    } else if (hyg.pos52 < 0.2) {
-      creditAdj = -5;
-      filters.push('⚡ HYG 신용시장 약세');
-    }
+  if (hyg?.pos52 != null) {
+    if (hyg.pos52 < 0.1)      { creditAdj = -10; filters.push('🚨 HYG 52주 저점 — 신용위기 경고'); }
+    else if (hyg.pos52 < 0.2) { creditAdj = -5;  filters.push('⚡ HYG 신용시장 약세'); }
   }
 
-  const finalScore = Math.max(0, Math.min(100, baseScore + yieldAdj + trendAdj + creditAdj));
+  const finalScore = Math.max(0, Math.min(100, baseScore + rateAdj + trendAdj + creditAdj));
 
-  // 신호 판정
   let signal, color, emoji;
   if (finalScore >= 78)      { signal='강력매수'; emoji='🔴'; color='#ef4444'; }
-  else if (finalScore >= 62) { signal='매수';    emoji='🟠'; color='#f97316'; }
-  else if (finalScore >= 38) { signal='홀드';    emoji='🟡'; color='#eab308'; }
-  else if (finalScore >= 22) { signal='매도';    emoji='🟢'; color='#22c55e'; }
+  else if (finalScore >= 62) { signal='매수';     emoji='🟠'; color='#f97316'; }
+  else if (finalScore >= 38) { signal='홀드';     emoji='🟡'; color='#eab308'; }
+  else if (finalScore >= 22) { signal='매도';     emoji='🟢'; color='#22c55e'; }
   else                       { signal='강력매도'; emoji='🔵'; color='#3b82f6'; }
 
-  return { finalScore, baseScore, signal, emoji, color, filters, yieldAdj, trendAdj, creditAdj };
+  return { finalScore, baseScore, signal, emoji, color, filters };
 }
 
 // ══════════════════════════════════════════════════════════
 // 매매신호 UI 렌더
 // ══════════════════════════════════════════════════════════
 function renderSignalPanel() {
-  // 1. 장단기 금리차
+  // ── 1. 10년물 금리 (^TNX) ───────────────────────────────
   const ys = state.yieldSpread;
   if (ys) {
-    const spEl = document.getElementById('yieldSpread');
-    const y10El = document.getElementById('yield10y');
-    const y2El = document.getElementById('yield2y');
-    const descEl = document.getElementById('yieldDesc');
-    const barEl = document.getElementById('yieldBar');
+    const valEl   = document.getElementById('yieldSpread');
+    const lowEl   = document.getElementById('yield10y');
+    const highEl  = document.getElementById('yield2y');
+    const descEl  = document.getElementById('yieldDesc');
+    const barEl   = document.getElementById('yieldBar');
+    const trendEl = document.getElementById('yieldTrend');
     const badgeEl = document.getElementById('yieldSignalBadge');
-    if (spEl) spEl.textContent = (ys.spread >= 0 ? '+' : '') + ys.spread.toFixed(2);
-    if (y10El) y10El.textContent = ys.y10.toFixed(2);
-    if (y2El) y2El.textContent = ys.y2.toFixed(2);
-    const y2LabelEl = document.getElementById('yield2yLabel');
-    if (y2LabelEl && ys.label2) y2LabelEl.textContent = ys.label2;
-    const isInverted = ys.spread < 0;
-    const isRecovering = ys.spread >= 0 && ys.spread < 0.3;
-    const desc = isInverted ? '🚨 역전 중 — 경기침체 선행 신호'
-      : isRecovering ? '⚠️ 역전 해소 직후 — 위험 구간'
-      : ys.spread > 1.0 ? '✅ 정상 스프레드 — 경기 확장'
-      : '🟡 정상 (좁은 스프레드)';
-    if (descEl) descEl.textContent = desc;
-    // 바 (0%=역전 극심, 50%=0, 100%=정상)
-    const barPct = Math.max(0, Math.min(100, (ys.spread + 1.5) / 3 * 100));
-    const barColor = isInverted ? '#ef4444' : isRecovering ? '#f97316' : '#22c55e';
-    if (barEl) { barEl.style.width = barPct + '%'; barEl.style.background = barColor; }
-    if (badgeEl) {
-      badgeEl.textContent = isInverted ? '역전' : isRecovering ? '회복중' : '정상';
-      badgeEl.style.background = barColor + '33';
-      badgeEl.style.color = barColor;
+
+    const rate = ys.y10;
+    if (valEl) valEl.textContent = rate.toFixed(2);
+    if (lowEl)  lowEl.textContent  = ys.low52.toFixed(2);
+    if (highEl) highEl.textContent = ys.high52.toFixed(2);
+
+    // 3개월 방향
+    if (trendEl) {
+      if (ys.trend > 0.1)       { trendEl.textContent='▲ 상승중'; trendEl.style.color='var(--red)'; }
+      else if (ys.trend < -0.1) { trendEl.textContent='▼ 하락중'; trendEl.style.color='var(--green)'; }
+      else                      { trendEl.textContent='→ 보합';   trendEl.style.color='var(--text3)'; }
     }
-    if (spEl) spEl.style.color = isInverted ? '#ef4444' : isRecovering ? '#f97316' : '#22c55e';
+
+    // 신호 판정
+    let badge, badgeColor, desc;
+    if (rate >= 5.0)       { badge='위험'; badgeColor='#ef4444'; desc='🚨 5%↑ — 주식 밸류에이션 위험'; }
+    else if (rate >= 4.5)  { badge='주의'; badgeColor='#f97316'; desc='⚠️ 4.5%↑ — 성장주 부담 구간'; }
+    else if (rate >= 4.0)  { badge='경계'; badgeColor='#eab308'; desc='🟡 4~4.5% — 중립적 금리 환경'; }
+    else if (rate >= 3.0)  { badge='양호'; badgeColor='#22c55e'; desc='✅ 3~4% — 주식 친화적 금리'; }
+    else                   { badge='저금리'; badgeColor='#3b82f6'; desc='✅ 3%↓ — 완화적 금리 환경'; }
+
+    if (descEl) descEl.textContent = desc;
+    if (badgeEl) { badgeEl.textContent = badge; badgeEl.style.background = badgeColor+'33'; badgeEl.style.color = badgeColor; }
+
+    // 바 위치 (52주 low~high 범위 내 현재 위치)
+    if (barEl) barEl.style.left = (ys.pos52 * 100) + '%';
   }
 
-  // 2. HYG
+  // ── 2. HYG 신용시장 ─────────────────────────────────────
   const hyg = state.hygData;
   if (hyg) {
     const priceEl = document.getElementById('hygPrice');
-    const chgEl = document.getElementById('hygChange');
-    const descEl = document.getElementById('hygDesc');
+    const chgEl   = document.getElementById('hygChange');
+    const descEl  = document.getElementById('hygDesc');
     const labelEl = document.getElementById('hyg52label');
-    const markerEl = document.getElementById('hygMarker');
+    const markerEl= document.getElementById('hygMarker');
     const badgeEl = document.getElementById('hygSignalBadge');
+
     if (priceEl) priceEl.textContent = hyg.price.toFixed(2);
     if (hyg.prevClose && chgEl) {
       const chg = ((hyg.price - hyg.prevClose) / hyg.prevClose * 100);
@@ -1957,32 +1951,32 @@ function renderSignalPanel() {
       chgEl.style.color = chg >= 0 ? 'var(--green)' : 'var(--red)';
     }
     const pct = Math.round(hyg.pos52 * 100);
-    if (labelEl) labelEl.textContent = pct + '% 위치';
-    if (markerEl) markerEl.style.marginLeft = pct + '%';
-    const isWeak = hyg.pos52 < 0.2;
+    if (labelEl)  labelEl.textContent  = pct + '% 위치';
+    if (markerEl) markerEl.style.marginLeft = Math.max(0, Math.min(95, pct)) + '%';
+
     const isCrisis = hyg.pos52 < 0.1;
+    const isWeak   = hyg.pos52 < 0.2;
+    const isStrong = hyg.pos52 > 0.7;
     const desc = isCrisis ? '🚨 신용위기 경고 — 주식 선행 하락 신호'
-      : isWeak ? '⚠️ 신용시장 약세 — 주의'
-      : hyg.pos52 > 0.7 ? '✅ 신용시장 건전 — 안정적'
+      : isWeak  ? '⚠️ 신용시장 약세 — 주의'
+      : isStrong ? '✅ 신용시장 건전 — 안정적'
       : '🟡 중립';
-    if (descEl) descEl.textContent = desc;
-    const badgeColor = isCrisis ? '#ef4444' : isWeak ? '#f97316' : hyg.pos52 > 0.7 ? '#22c55e' : '#eab308';
-    if (badgeEl) {
-      badgeEl.textContent = isCrisis ? '위기' : isWeak ? '약세' : hyg.pos52 > 0.7 ? '건전' : '중립';
-      badgeEl.style.background = badgeColor + '33';
-      badgeEl.style.color = badgeColor;
-    }
+    const badgeColor = isCrisis ? '#ef4444' : isWeak ? '#f97316' : isStrong ? '#22c55e' : '#eab308';
+    const badgeText  = isCrisis ? '위기' : isWeak ? '약세' : isStrong ? '건전' : '중립';
+    if (descEl)  descEl.textContent  = desc;
+    if (badgeEl) { badgeEl.textContent = badgeText; badgeEl.style.background = badgeColor+'33'; badgeEl.style.color = badgeColor; }
   }
 
-  // 3. S&P500 추세
+  // ── 3. S&P500 추세 ──────────────────────────────────────
   const sp = state.spTrend;
   if (sp) {
     const priceEl = document.getElementById('spPrice');
-    const chgEl = document.getElementById('spChange');
-    const maEl = document.getElementById('sp200ma');
-    const vsMaEl = document.getElementById('spVsMa');
-    const barEl = document.getElementById('spTrendBar');
+    const chgEl   = document.getElementById('spChange');
+    const maEl    = document.getElementById('sp200ma');
+    const vsMaEl  = document.getElementById('spVsMa');
+    const barEl   = document.getElementById('spTrendBar');
     const badgeEl = document.getElementById('spTrendBadge');
+
     if (priceEl) priceEl.textContent = sp.price.toLocaleString('en-US', {maximumFractionDigits:0});
     if (sp.prevClose && chgEl) {
       const chg = ((sp.price - sp.prevClose) / sp.prevClose * 100);
@@ -1990,40 +1984,27 @@ function renderSignalPanel() {
       chgEl.style.color = chg >= 0 ? 'var(--green)' : 'var(--red)';
     }
     if (maEl) maEl.textContent = sp.ma200.toLocaleString('en-US', {maximumFractionDigits:0});
-    const isAbove = sp.vsMa >= 0;
+
     const color = sp.vsMa < -5 ? '#ef4444' : sp.vsMa < 0 ? '#f97316' : sp.vsMa > 5 ? '#22c55e' : '#eab308';
-    if (vsMaEl) {
-      vsMaEl.textContent = (sp.vsMa >= 0 ? '+' : '') + sp.vsMa + '%';
-      vsMaEl.style.color = color;
-    }
-    // 바 50%=MA 위치, 좌우로 이탈 정도 표시
+    if (vsMaEl) { vsMaEl.textContent = (sp.vsMa >= 0 ? '+' : '') + sp.vsMa + '%'; vsMaEl.style.color = color; }
+
     const barPct = Math.max(5, Math.min(95, 50 + sp.vsMa * 2));
     if (barEl) { barEl.style.width = barPct + '%'; barEl.style.background = color; }
-    if (badgeEl) {
-      badgeEl.textContent = sp.vsMa < -5 ? '하락추세' : sp.vsMa < 0 ? 'MA 하회' : sp.vsMa > 5 ? '상승추세' : 'MA 근접';
-      badgeEl.style.background = color + '33';
-      badgeEl.style.color = color;
-    }
+
+    const badgeText = sp.vsMa < -5 ? '하락추세' : sp.vsMa < 0 ? 'MA 하회' : sp.vsMa > 5 ? '상승추세' : 'MA 근접';
+    if (badgeEl) { badgeEl.textContent = badgeText; badgeEl.style.background = color+'33'; badgeEl.style.color = color; }
   }
 
-  // 4. 종합 매매신호
+  // ── 4. 종합 매매신호 ────────────────────────────────────
   const sig = calcMasterSignal();
-  const masterEl = document.getElementById('masterSignal');
-  const scoreEl = document.getElementById('masterScore');
-  const needleEl = document.getElementById('masterNeedle');
+  const masterEl  = document.getElementById('masterSignal');
+  const scoreEl   = document.getElementById('masterScore');
+  const needleEl  = document.getElementById('masterNeedle');
   const filtersEl = document.getElementById('masterFilters');
 
-  if (masterEl) {
-    masterEl.textContent = sig.emoji + ' ' + sig.signal;
-    masterEl.style.color = sig.color;
-  }
-  if (scoreEl) {
-    scoreEl.textContent = `심리점수 ${Math.round(sig.baseScore)}점 → 조정 후 ${Math.round(sig.finalScore)}점`;
-  }
-  if (needleEl) {
-    // 강매도=0% 강매수=100%
-    needleEl.style.left = sig.finalScore + '%';
-  }
+  if (masterEl)  { masterEl.textContent = sig.emoji + ' ' + sig.signal; masterEl.style.color = sig.color; }
+  if (scoreEl)   { scoreEl.textContent = `심리 ${Math.round(sig.baseScore)}점 → 최종 ${Math.round(sig.finalScore)}점`; }
+  if (needleEl)  { needleEl.style.left = sig.finalScore + '%'; }
   if (filtersEl) {
     filtersEl.innerHTML = sig.filters.length > 0
       ? sig.filters.map(f => `<div>${f}</div>`).join('')
