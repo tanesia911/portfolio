@@ -6,7 +6,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="포트폴리오">
+<meta name="apple-mobile-web-app-title" content="CEOK Portfolio">
 <meta name="theme-color" content="#0a0a0f">
 <link id="pwaManifest" rel="manifest">
 <!-- PWA 아이콘: SVG → Apple Touch Icon -->
@@ -21,8 +21,8 @@
 
   // Manifest (blob URL)
   const manifest = {
-    name: '911 Portfolio',
-    short_name: '911',
+    name: 'CEOK Portfolio',
+    short_name: 'CEOK',
     description: '내 투자 포트폴리오 관리 앱',
     start_url: window.location.href,
     display: 'standalone',
@@ -388,7 +388,7 @@
   /* Fear&Greed */
   .fg-grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(2, 1fr);
     gap: 10px;
     margin-bottom: 20px;
   }
@@ -639,7 +639,7 @@
 
 <div class="header">
   <div class="header-left">
-    <div class="logo"><span style="color:var(--yellow)">911</span> PORT<span>FOLIO</span></div>
+    <div class="logo"><span style="color:var(--yellow)">CEOK</span> PORT<span>FOLIO</span></div>
     <div id="filenameBadge" class="header-badge" style="font-size:13px;padding:3px 12px;color:var(--text);background:var(--surface2);border-color:var(--border)"></div>
     <div class="header-badge">LIVE</div>
     <div class="flex-center" style="gap:6px">
@@ -663,6 +663,10 @@
     <button id="pwaInstallBtn" onclick="pwaInstall()" title="홈 화면에 앱으로 추가"
       style="display:none;background:var(--surface2);border:1px solid var(--border);color:var(--text2);padding:5px 10px;border-radius:8px;cursor:pointer;font-size:11px;font-weight:700;font-family:inherit;align-items:center;gap:5px;line-height:1.3">
       <span style="font-size:13px">📲</span><span class="btn-label">홈에 추가</span>
+    </button>
+    <button onclick="showHelpModal()"
+      style="background:var(--surface2);border:1px solid var(--border);color:var(--text2);padding:5px 10px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:700;font-family:inherit;display:flex;align-items:center;gap:4px">
+      ❓<span class="btn-label">사용법</span>
     </button>
     <button class="refresh-btn" id="refreshBtn" onclick="refreshAll()">
       <span id="refreshIcon">↻</span><span class="btn-label"> 새로고침</span>
@@ -688,7 +692,7 @@
       <!-- 미국 F&G -->
       <div class="fg-meter">
         <div>
-          <div class="card-label" style="white-space:nowrap">🇺🇸 미국</div>
+          <div class="card-label" style="white-space:nowrap">🇺🇸 미국 F&G</div>
           <div class="fg-score" id="fgScore">-</div>
         </div>
         <div class="fg-bar-wrap">
@@ -700,33 +704,17 @@
           <div class="fg-bar-bg">
             <div class="fg-needle" id="fgNeedle" style="left:50%"></div>
           </div>
-          <div class="fg-desc" style="margin-top:8px;">CNN Fear & Greed</div>
+          <div class="fg-desc" style="margin-top:6px">CNN Fear &amp; Greed Index</div>
+          <div style="font-size:10px;color:var(--text3);margin-top:3px;line-height:1.4">0~100 지수. 투자자 심리 측정.<br>25↓ 극단공포(매수기회) · 75↑ 극단탐욕(조정주의)</div>
         </div>
       </div>
 
-      <!-- 한국 F&G (KOSPI 기반 계산) -->
-      <div class="fg-meter">
-        <div>
-          <div class="card-label" style="white-space:nowrap">🇰🇷 한국</div>
-          <div class="fg-score" id="fgKrScore">-</div>
-        </div>
-        <div class="fg-bar-wrap">
-          <div class="flex-between">
-            <span style="color:var(--red);font-size:10px;">공포</span>
-            <div class="fg-label" id="fgKrLabel">-</div>
-            <span style="color:var(--green);font-size:10px;">탐욕</span>
-          </div>
-          <div class="fg-bar-bg">
-            <div class="fg-needle" id="fgKrNeedle" style="left:50%"></div>
-          </div>
-          <div class="fg-desc" id="fgKrDesc" style="margin-top:8px;">KOSPI 기반 추정</div>
-        </div>
-      </div>
+
 
       <!-- 코인 F&G -->
       <div class="fg-meter">
         <div>
-          <div class="card-label" style="white-space:nowrap">🪙 코인</div>
+          <div class="card-label" style="white-space:nowrap">🪙 코인 F&G</div>
           <div class="fg-score" id="fgCoinScore">-</div>
         </div>
         <div class="fg-bar-wrap">
@@ -738,7 +726,8 @@
           <div class="fg-bar-bg">
             <div class="fg-needle" id="fgCoinNeedle" style="left:50%"></div>
           </div>
-          <div class="fg-desc" style="margin-top:8px;">Alternative.me</div>
+          <div class="fg-desc" style="margin-top:6px">Alternative.me</div>
+          <div style="font-size:10px;color:var(--text3);margin-top:3px;line-height:1.4">비트코인 시장 심리 지수.<br>변동성·거래량·SNS 등 종합 반영</div>
         </div>
       </div>
 
@@ -754,6 +743,7 @@
         <div style="flex:1">
           <div class="card-sub" id="vixChange" style="font-size:13px;margin-bottom:4px">-</div>
           <div style="font-size:11px;color:var(--text3)">S&P500 변동성 지수 · CBOE</div>
+          <div style="font-size:10px;color:var(--text3);margin-top:4px;line-height:1.4">시장 불안감 측정. 10↓ 안정 · 20↑ 경계 · 30↑ 공포.<br>급등 시 매수기회, 급락 시 과열 신호</div>
           <div style="margin-top:8px;height:6px;background:var(--border);border-radius:3px;overflow:hidden">
             <div id="vixBar" style="height:100%;border-radius:3px;background:var(--green);transition:width 0.5s ease;width:0%"></div>
           </div>
@@ -782,6 +772,7 @@
         <div style="flex:1">
           <div class="card-sub" id="fxChange" style="font-size:13px;margin-bottom:4px">-</div>
           <div style="font-size:11px;color:var(--text3)">Yahoo Finance 실시간</div>
+          <div style="font-size:10px;color:var(--text3);margin-top:3px;line-height:1.4">달러 자산 평가금에 직결.<br>환율↑ → 달러자산 평가↑ / 환율↓ → 평가↓</div>
           <div style="margin-top:8px">
             <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text3);margin-bottom:3px">
               <span>52주 범위</span><span id="fx52Label">-</span>
@@ -804,6 +795,7 @@
         <div style="flex:1">
           <div class="card-sub" id="pcrChange" style="font-size:13px;margin-bottom:4px">-</div>
           <div style="font-size:11px;color:var(--text3)">CBOE 총 P/C Ratio</div>
+          <div style="font-size:10px;color:var(--text3);margin-top:4px;line-height:1.4">풋(하락베팅)/콜(상승베팅) 비율.<br>0.7↓ 과열(조정주의) · 1.0↑ 공포(반등가능)</div>
           <div style="margin-top:8px;height:6px;background:var(--border);border-radius:3px;overflow:hidden">
             <div id="pcrBar" style="height:100%;border-radius:3px;background:var(--green);transition:width 0.5s ease;width:0%"></div>
           </div>
@@ -955,9 +947,11 @@
           <div class="input-group">
             <div class="input-label">기준금액 조정 <span style="font-size:10px;color:var(--text3);font-weight:400">실제계좌와 차이날 때</span></div>
             <div class="input-row">
-              <input type="number" id="extraFund" value="0" step="100000" placeholder="0" title="추가 투자할 금액 또는 앱 평가금과 실제 계좌의 차이(음수 가능)">
+              <input type="text" id="extraFund" value="0" placeholder="0" title="추가 투자할 금액 또는 앱 평가금과 실제 계좌의 차이(음수 가능)"
+                oninput="onMoneyInput(this,'extraFund')" onfocus="onMoneyFocus(this)" onblur="onMoneyBlur(this,'extraFund')">
               <span class="input-unit">원</span>
             </div>
+            <div id="extraFundHint" style="font-size:11px;color:var(--accent);margin-top:2px;font-weight:600;min-height:14px"></div>
             <div style="font-size:10px;color:var(--text3);margin-top:4px">추가투자 시 +, 앱보다 실제계좌가 낮으면 −</div>
           </div>
           <div class="input-group" id="rebalModeGroup">
@@ -1099,17 +1093,21 @@
         <div class="input-group">
           <div class="input-label">📈 주식계좌 실제 잔고 <span id="stockBalanceUpdate" style="font-size:10px;color:var(--text3);font-weight:400"></span></div>
           <div class="input-row">
-            <input type="number" id="settingStockBalance" value="0" step="10000" placeholder="증권사 앱의 총자산 금액">
+            <input type="text" id="settingStockBalance" value="0" placeholder="증권사 앱의 총자산 금액"
+              oninput="onMoneyInput(this, 'stockBalance')" onfocus="onMoneyFocus(this)" onblur="onMoneyBlur(this, 'stockBalance')">
             <span class="input-unit">원</span>
           </div>
+          <div id="settingStockBalanceHint" style="font-size:11px;color:var(--accent);margin-top:2px;font-weight:600;min-height:14px"></div>
           <div style="font-size:10px;color:var(--text3);margin-top:4px">증권사 앱의 총자산(평가금+예수금) 입력</div>
         </div>
         <div class="input-group">
           <div class="input-label">🪙 업비트 실제 잔고 <span id="upbitBalanceUpdate" style="font-size:10px;color:var(--text3);font-weight:400"></span></div>
           <div class="input-row">
-            <input type="number" id="settingUpbitBalance" value="0" step="10000" placeholder="업비트 앱의 보유자산 금액">
+            <input type="text" id="settingUpbitBalance" value="0" placeholder="업비트 앱의 보유자산 금액"
+              oninput="onMoneyInput(this, 'upbitBalance')" onfocus="onMoneyFocus(this)" onblur="onMoneyBlur(this, 'upbitBalance')">
             <span class="input-unit">원</span>
           </div>
+          <div id="settingUpbitBalanceHint" style="font-size:11px;color:var(--accent);margin-top:2px;font-weight:600;min-height:14px"></div>
           <div style="font-size:10px;color:var(--text3);margin-top:4px">업비트 앱의 보유자산(코인평가+원화) 입력</div>
         </div>
       </div>
@@ -1244,7 +1242,7 @@ let state = {
   excludedAccounts: ['연금저축', 'IRP'],
   assetGroups: ['미국주식', '국내주식', '채권', '금', '코인', '기타'],
   theme: 'dark',
-  numUnit: 'abbr',
+  numUnit: 'full',
   rebalMode: 'exclude'
 };
 
@@ -1356,7 +1354,7 @@ async function init() {
     state.assetGroups = ['미국주식', '국내주식', '채권', '금', '코인', '기타'];
   }
   if (!state.theme) state.theme = 'dark';
-  if (!state.numUnit) state.numUnit = 'abbr';
+  if (!state.numUnit) state.numUnit = 'full';
   if (!state.rebalMode) state.rebalMode = 'exclude';
   if (state.stockBalance === undefined) state.stockBalance = 0;
   if (state.upbitBalance === undefined) state.upbitBalance = 0;
@@ -1366,6 +1364,7 @@ async function init() {
   updateSettingsUI();
   renderAccountList();
   renderAssetGroupList();
+  fillMoneyInputs();
   refreshAll();
 }
 
@@ -1406,43 +1405,47 @@ async function resetData() {
 
 // ===== 공통 프록시 헬퍼 =====
 // 마지막 성공한 프록시 캐시 (재시도 시 빠른 연결)
-let _bestProxyIdx = 0;
+// _bestProxyIdx deprecated (Race 방식으로 교체)
 
-async function fetchViaProxy(url, timeout = 6000) {
-  // 프록시 목록: allorigins 우선 (안정적), codetabs 백업, 직접 시도도 유지
-  // corsproxy.io는 Yahoo Finance 403 차단으로 제외
-  const proxies = [
-    // allorigins: contents 문자열로 감싸서 반환
-    { fn: u => `https://api.allorigins.win/get?url=${encodeURIComponent(u)}`,
-      parse: raw => raw?.contents ? JSON.parse(raw.contents) : null },
-    // codetabs: 직접 JSON 반환
-    { fn: u => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`,
-      parse: raw => raw },
-    // corsproxy.io 대안: cors.eu.org
-    { fn: u => `https://corsproxy.org/?${encodeURIComponent(u)}`,
-      parse: raw => raw?.contents ? JSON.parse(raw.contents) : raw },
-    // 직접 요청 (CORS 허용 API용)
-    { fn: u => u,
-      parse: raw => raw },
+async function fetchViaProxy(url, timeout = 8000) {
+  // 전략: 여러 프록시에 동시 요청 → 가장 먼저 성공한 결과 사용 (Race)
+  // 직접 요청(CORS 허용 API용)도 포함
+  const PROXY_LIST = [
+    // allorigins: {contents: "..."} 형태로 반환
+    u => ({ url: `https://api.allorigins.win/get?url=${encodeURIComponent(u)}`, parse: r => r?.contents ? JSON.parse(r.contents) : null }),
+    // corsproxy.org: allorigins와 동일 포맷
+    u => ({ url: `https://corsproxy.org/?${encodeURIComponent(u)}`, parse: r => r?.contents ? JSON.parse(r.contents) : r }),
+    // 직접 요청 (upbit, alternative.me 등 CORS 허용 API)
+    u => ({ url: u, parse: r => r }),
   ];
 
-  // 마지막 성공 프록시 캐시
-  const order = [...Array(proxies.length).keys()];
-  if (_bestProxyIdx > 0 && _bestProxyIdx < proxies.length) {
-    order.splice(order.indexOf(_bestProxyIdx), 1);
-    order.unshift(_bestProxyIdx);
-  }
-
-  for (const i of order) {
+  // 각 프록시를 개별 Promise로 → 성공한 것 먼저 resolve
+  const tryProxy = async (proxyFn) => {
     try {
-      const res = await fetch(proxies[i].fn(url), { signal: AbortSignal.timeout(timeout) });
-      if (!res.ok) continue; // 4xx/5xx 즉시 다음 프록시
+      const { url: proxyUrl, parse } = proxyFn(url);
+      const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(timeout) });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const raw = await res.json();
-      const result = proxies[i].parse(raw);
-      if (result) { _bestProxyIdx = i; return result; }
-    } catch(e) {}
+      const result = parse(raw);
+      if (!result) throw new Error('empty');
+      return result;
+    } catch(e) {
+      throw e;
+    }
+  };
+
+  // Promise.any: 하나라도 성공하면 즉시 반환
+  try {
+    return await Promise.any(PROXY_LIST.map(p => tryProxy(p)));
+  } catch(e) {
+    // 모두 실패 → codetabs 마지막 시도 (느리지만 안정적)
+    try {
+      const res = await fetch(`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
+        { signal: AbortSignal.timeout(timeout + 4000) });
+      if (!res.ok) return null;
+      return await res.json();
+    } catch(e2) { return null; }
   }
-  return null;
 }
 
 // ===== KRX 금현물 가격 조회 (GC=F USD + USDKRW 환산) =====
@@ -1531,7 +1534,7 @@ async function fetchPrices() {
     let meta = null;
     for (const host of ['query1', 'query2']) {
       const url = `https://${host}.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}?interval=1d&range=1d`;
-      const data = await fetchViaProxy(url, 8000);
+      const data = await fetchViaProxy(url, 10000);
       meta = data?.chart?.result?.[0]?.meta;
       if (meta?.regularMarketPrice || meta?.previousClose) break;
     }
@@ -1710,6 +1713,130 @@ async function fetchPCR() {
 }
 
 let _refreshing = false;
+
+// ══════════════════════════════════════════════════════════
+// 금액 입력 유틸: 쉼표 + 한국어 힌트
+// ══════════════════════════════════════════════════════════
+function _parseMoneyStr(str) {
+  return parseInt(str.replace(/[^0-9\-]/g, '')) || 0;
+}
+function _formatMoneyCsv(n) {
+  if (!n && n !== 0) return '';
+  return Math.abs(n).toLocaleString('ko-KR') + (n < 0 ? ' (음수)' : '');
+}
+function _moneyKorean(n) {
+  if (!n || n === 0) return '';
+  const abs = Math.abs(n);
+  let s = '';
+  if (abs >= 1e12) s = (abs / 1e12).toFixed(1).replace(/\.0$/, '') + '조';
+  else if (abs >= 1e8) s = (abs / 1e8).toFixed(1).replace(/\.0$/, '') + '억';
+  else if (abs >= 1e4) s = (abs / 1e4).toFixed(0) + '만';
+  else s = abs.toLocaleString() + '원';
+  return (n < 0 ? '-' : '') + s;
+}
+function onMoneyInput(el, field) {
+  const raw = el.value.replace(/[^0-9\-]/g, '');
+  const n = parseInt(raw) || 0;
+  // 커서 위치 보존하며 쉼표 포맷
+  const pos = el.selectionStart;
+  const oldLen = el.value.length;
+  el.value = n === 0 ? '' : (n < 0 ? '-' : '') + Math.abs(n).toLocaleString('ko-KR');
+  const newLen = el.value.length;
+  try { el.setSelectionRange(pos + (newLen - oldLen), pos + (newLen - oldLen)); } catch(e) {}
+  // 힌트 표시
+  const hintId = el.id + 'Hint';
+  const hint = document.getElementById(hintId);
+  if (hint) hint.textContent = n ? '→ ' + _moneyKorean(n) : '';
+  // 상태 즉시 반영
+  if (field === 'stockBalance') { state.stockBalance = n; state.stockBalanceAt = new Date().toISOString(); save(); renderAll(); }
+  else if (field === 'upbitBalance') { state.upbitBalance = n; state.upbitBalanceAt = new Date().toISOString(); save(); renderAll(); }
+  else if (field === 'extraFund') { state.extraFund = n; renderRebalTab(); }
+}
+function onMoneyFocus(el) {
+  // 포커스 시 숫자만 남기기
+  const n = _parseMoneyStr(el.value);
+  el.value = n || '';
+}
+function onMoneyBlur(el, field) {
+  const n = _parseMoneyStr(el.value);
+  el.value = n ? (n < 0 ? '-' : '') + Math.abs(n).toLocaleString('ko-KR') : '0';
+  const hintId = el.id + 'Hint';
+  const hint = document.getElementById(hintId);
+  if (hint && n) hint.textContent = '→ ' + _moneyKorean(n);
+}
+// 설정탭 로드 시 기존 값 채우기 (기존 loadSettings 대체)
+function fillMoneyInputs() {
+  const fields = [
+    ['settingStockBalance', state.stockBalance],
+    ['settingUpbitBalance', state.upbitBalance],
+    ['extraFund', state.extraFund || 0],
+  ];
+  fields.forEach(([id, val]) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.value = val ? Math.abs(val).toLocaleString('ko-KR') : '0';
+    const hint = document.getElementById(id + 'Hint');
+    if (hint && val) hint.textContent = '→ ' + _moneyKorean(val);
+  });
+}
+
+// ══════════════════════════════════════════════════════════
+// 사용법 모달
+// ══════════════════════════════════════════════════════════
+function showHelpModal() {
+  const existing = document.getElementById('helpModal');
+  if (existing) { existing.remove(); return; }
+  const modal = document.createElement('div');
+  modal.id = 'helpModal';
+  modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.75);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box';
+  modal.innerHTML = `
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;max-width:520px;width:100%;max-height:85vh;overflow-y:auto;padding:24px;position:relative">
+      <button onclick="document.getElementById('helpModal').remove()"
+        style="position:absolute;top:12px;right:16px;background:none;border:none;color:var(--text2);font-size:20px;cursor:pointer;line-height:1">✕</button>
+      <div style="font-size:17px;font-weight:800;color:var(--yellow);margin-bottom:18px">📖 CEOK Portfolio 사용법</div>
+
+      <div style="display:flex;flex-direction:column;gap:14px;font-size:13px;line-height:1.7;color:var(--text2)">
+
+        <div><span style="color:var(--accent);font-weight:700">① 종목 추가 (보유종목 탭)</span><br>
+        보유종목 탭 → <b>+ 종목 추가</b> 버튼 → 계좌, 자산군, 티커(종목코드), 수량, 평균단가 입력<br>
+        <span style="color:var(--text3);font-size:11px">• 미국주식: AAPL, QQQ / 국내주식: 005930.KS / 코인: KRW-BTC / 금: KRX-GOLD</span></div>
+
+        <div><span style="color:var(--accent);font-weight:700">② 잔고 입력 (설정 탭)</span><br>
+        설정 탭 → 주식계좌 잔고 / 업비트 잔고 입력<br>
+        <span style="color:var(--text3);font-size:11px">• 증권사 앱의 "총자산" 숫자를 그대로 입력하면 예수금이 자동 계산됩니다</span></div>
+
+        <div><span style="color:var(--accent);font-weight:700">③ 목표 비중 설정 (설정 탭)</span><br>
+        설정 탭 → 계좌 관리에서 각 계좌의 목표 비중(%) 설정<br>
+        <span style="color:var(--text3);font-size:11px">• 🔒 독립 버튼을 누르면 연금저축·IRP처럼 비중 계산에서 제외됩니다</span></div>
+
+        <div><span style="color:var(--accent);font-weight:700">④ 리밸런싱 확인 (리밸런싱 탭)</span><br>
+        현재 비중과 목표 비중 차이를 확인하고 매수/매도 수량을 자동 계산<br>
+        <span style="color:var(--text3);font-size:11px">• 추가 투자금 입력 시 어디에 얼마 투자할지 계산해줍니다</span></div>
+
+        <div><span style="color:var(--accent);font-weight:700">⑤ 가격 새로고침</span><br>
+        우측 상단 <b>↻ 새로고침</b> 버튼 → 모든 종목 실시간 가격 조회<br>
+        <span style="color:var(--text3);font-size:11px">• 60초마다 자동 갱신 / 가격이 안 뜨면 수동 새로고침 시도</span></div>
+
+        <div><span style="color:var(--accent);font-weight:700">⑥ 단위 / 테마 변경</span><br>
+        <b>₩ 전체</b> 버튼: 전체 숫자 ↔ 억·만 단위 전환<br>
+        <b>🌙 다크</b> 버튼: 다크/라이트 모드 전환</div>
+
+        <div><span style="color:var(--accent);font-weight:700">⑦ 데이터 백업 / 복원 (설정 탭)</span><br>
+        설정 탭 → JSON 내보내기로 데이터 백업 / JSON 불러오기로 복원<br>
+        <span style="color:var(--text3);font-size:11px">• 브라우저를 바꾸거나 앱을 초기화할 때 백업 파일을 불러오세요</span></div>
+
+        <div><span style="color:var(--accent);font-weight:700">⑧ 홈 화면에 추가 (모바일)</span><br>
+        <b>📲 홈에 추가</b> 버튼 → 안드로이드: 자동 설치 / iOS Safari: 공유 → 홈 화면에 추가</div>
+
+      </div>
+      <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--border);font-size:11px;color:var(--text3);text-align:center">
+        CEOK Portfolio · 실시간 가격은 Yahoo Finance / 업비트 API 사용
+      </div>
+    </div>
+  `;
+  modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+  document.body.appendChild(modal);
+}
 
 async function refreshAll() {
   if (_refreshing) return; // 중복 실행 방지
@@ -3163,6 +3290,7 @@ function showTab(tab) {
   if (tabBtn) tabBtn.classList.add('active');
   if (tab === 'plan' && window._planData) renderPlan(window._planData);
   if (tab === 'dividend') renderDividendTab();
+  if (tab === 'settings') setTimeout(fillMoneyInputs, 50);
 }
 
 // ===== 종목 CRUD =====
@@ -3766,8 +3894,17 @@ function renameAccount(i) {
 
 // ===== 설정 =====
 function updateSettingsUI() {
-  document.getElementById('settingStockBalance').value = state.stockBalance || 0;
-  document.getElementById('settingUpbitBalance').value = state.upbitBalance || 0;
+  // 금액: 쉼표 포맷으로 표시
+  const _fmtV = v => v ? Math.abs(v).toLocaleString('ko-KR') : '0';
+  const sbEl = document.getElementById('settingStockBalance');
+  const ubEl = document.getElementById('settingUpbitBalance');
+  if (sbEl) sbEl.value = _fmtV(state.stockBalance);
+  if (ubEl) ubEl.value = _fmtV(state.upbitBalance);
+  // 한국어 힌트
+  const sbH = document.getElementById('settingStockBalanceHint');
+  const ubH = document.getElementById('settingUpbitBalanceHint');
+  if (sbH && state.stockBalance) sbH.textContent = '→ ' + _moneyKorean(state.stockBalance);
+  if (ubH && state.upbitBalance) ubH.textContent = '→ ' + _moneyKorean(state.upbitBalance);
   // 마지막 업데이트 시각 표시
   const fmt2 = (iso) => iso ? new Date(iso).toLocaleString('ko-KR',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}) : '';
   const sEl = document.getElementById('stockBalanceUpdate');
@@ -3777,8 +3914,8 @@ function updateSettingsUI() {
 }
 
 function applySettings() {
-  const newStock = parseFloat(document.getElementById('settingStockBalance').value) || 0;
-  const newUpbit = parseFloat(document.getElementById('settingUpbitBalance').value) || 0;
+  const newStock = _parseMoneyStr(document.getElementById('settingStockBalance').value);
+  const newUpbit = _parseMoneyStr(document.getElementById('settingUpbitBalance').value);
   // 값이 바뀐 경우에만 타임스탬프 갱신
   if (newStock !== (state.stockBalance || 0)) state.stockBalanceAt = new Date().toISOString();
   if (newUpbit !== (state.upbitBalance || 0)) state.upbitBalanceAt = new Date().toISOString();
