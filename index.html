@@ -1783,7 +1783,7 @@ async function fetchYieldSpread() {
     // 10년-3개월 스프레드 = 뉴욕 연방준비은행이 경기침체 예측에 사용하는 방식
     const [d10, d3m] = await Promise.all([
       fetchViaProxy('https://query1.finance.yahoo.com/v8/finance/chart/%5ETNX?interval=1d&range=5d', 10000),
-      fetchViaProxy('https://query1.finance.yahoo.com/v8/finance/chart/%5EIRX?interval=1d&range=5d', 10000)
+      fetchViaProxy('https://query1.finance.yahoo.com/v8/finance/chart/%5EIRX?interval=1d&range=1y', 10000)
     ]);
     const y10 = d10?.chart?.result?.[0]?.meta?.regularMarketPrice;
     const y3mRaw = d3m?.chart?.result?.[0]?.meta?.regularMarketPrice;
