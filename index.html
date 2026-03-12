@@ -2362,7 +2362,7 @@ function renderAll() {
 }
 function _doRenderAll() {
   // 항상 실행해야 하는 함수 (모든 탭에 영향)
-  const always = [renderDashboard, updateFGMeter, renderVixFxPanel, renderHedgePanel, renderRebalAccountBtns, renderHoldings, renderDividendTab];
+  const always = [renderDashboard, updateFGMeter, renderVixFxPanel, renderHedgePanel, renderSignalPanel, renderRebalAccountBtns, renderHoldings, renderDividendTab];
   always.forEach(fn => { try { fn(); } catch(e) { console.error(fn.name + ' 오류:', e); } });
 }
 
