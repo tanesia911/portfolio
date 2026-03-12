@@ -633,6 +633,14 @@
     .header > .flex-center > button,
     #unitToggleBtn { padding: 5px 7px !important; font-size: 13px !important; }
   }
+
+  /* 매매신호 패널 반응형 */
+  @media (max-width: 900px) {
+    #signalPanel { grid-template-columns: 1fr 1fr !important; }
+  }
+  @media (max-width: 480px) {
+    #signalPanel { grid-template-columns: 1fr !important; }
+  }
 </style>
 </head>
 <body>
@@ -802,6 +810,87 @@
           <div id="pcrSignal" style="font-size:11px;margin-top:5px;font-weight:700"></div>
         </div>
       </div>
+    </div>
+
+    <!-- 매매신호 패널 -->
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px;margin-bottom:20px" id="signalPanel">
+
+      <!-- 장단기 금리차 카드 -->
+      <div class="summary-card" style="display:flex;flex-direction:column;gap:8px">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <div class="card-label">📐 장단기 금리차</div>
+          <div id="yieldSignalBadge" style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;background:var(--surface2);color:var(--text2)">-</div>
+        </div>
+        <div style="display:flex;align-items:baseline;gap:8px">
+          <div class="card-value mono" id="yieldSpread" style="font-size:24px">-</div>
+          <div style="font-size:11px;color:var(--text3)">%p</div>
+        </div>
+        <div style="font-size:10px;color:var(--text3);line-height:1.5">
+          10년물 <span id="yield10y" style="color:var(--text)">-</span>% · 2년물 <span id="yield2y" style="color:var(--text)">-</span>%<br>
+          <span id="yieldDesc" style="color:var(--text2)">-</span>
+        </div>
+        <div style="height:4px;background:var(--border);border-radius:2px;overflow:hidden">
+          <div id="yieldBar" style="height:100%;border-radius:2px;transition:width 0.5s,background 0.5s;width:50%;background:var(--yellow)"></div>
+        </div>
+        <div style="font-size:10px;color:var(--text3);line-height:1.4">역전 → 경기침체 선행지표.<br>음수 지속 후 회복 구간이 가장 위험</div>
+      </div>
+
+      <!-- HYG 신용시장 카드 -->
+      <div class="summary-card" style="display:flex;flex-direction:column;gap:8px">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <div class="card-label">🏦 신용시장 (HYG)</div>
+          <div id="hygSignalBadge" style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;background:var(--surface2);color:var(--text2)">-</div>
+        </div>
+        <div style="display:flex;align-items:baseline;gap:8px">
+          <div class="card-value mono" id="hygPrice" style="font-size:24px">-</div>
+          <div id="hygChange" style="font-size:11px;color:var(--text2)">-</div>
+        </div>
+        <div style="font-size:10px;color:var(--text3);line-height:1.5">
+          52주 위치: <span id="hyg52label" style="color:var(--text)">-</span><br>
+          <span id="hygDesc" style="color:var(--text2)">-</span>
+        </div>
+        <div style="height:4px;background:var(--border);border-radius:2px;overflow:hidden">
+          <div id="hygBar" style="height:100%;border-radius:2px;background:linear-gradient(90deg,var(--red),var(--yellow),var(--green));width:100%;opacity:0.4"></div>
+          <div id="hygMarker" style="position:relative;top:-4px;width:2px;height:4px;background:white;border-radius:1px;margin-left:50%"></div>
+        </div>
+        <div style="font-size:10px;color:var(--text3);line-height:1.4">하이일드 채권. 하락 시 주식 2~4주 선행.<br>52주 저점 근처 = 신용위기 경고</div>
+      </div>
+
+      <!-- S&P500 추세 카드 -->
+      <div class="summary-card" style="display:flex;flex-direction:column;gap:8px">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <div class="card-label">📈 S&P500 추세</div>
+          <div id="spTrendBadge" style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;background:var(--surface2);color:var(--text2)">-</div>
+        </div>
+        <div style="display:flex;align-items:baseline;gap:8px">
+          <div class="card-value mono" id="spPrice" style="font-size:24px">-</div>
+          <div id="spChange" style="font-size:11px;color:var(--text2)">-</div>
+        </div>
+        <div style="font-size:10px;color:var(--text3);line-height:1.5">
+          200일 MA: <span id="sp200ma" style="color:var(--text)">-</span><br>
+          현재가 MA 대비: <span id="spVsMa" style="font-weight:700">-</span>
+        </div>
+        <div style="height:4px;background:var(--border);border-radius:2px;overflow:hidden">
+          <div id="spTrendBar" style="height:100%;border-radius:2px;transition:width 0.5s,background 0.5s;width:50%;background:var(--yellow)"></div>
+        </div>
+        <div style="font-size:10px;color:var(--text3);line-height:1.4">200일 MA 위 = 상승추세(매수신호 유효).<br>아래 = 하락추세(매수신호 억제)</div>
+      </div>
+
+      <!-- 종합 매매신호 카드 -->
+      <div class="summary-card" style="display:flex;flex-direction:column;gap:8px;border:1px solid var(--border)">
+        <div class="card-label">🎯 종합 매매신호</div>
+        <div id="masterSignal" style="font-size:22px;font-weight:900;text-align:center;padding:8px 0;letter-spacing:-0.5px">-</div>
+        <div id="masterScore" style="text-align:center;font-size:11px;color:var(--text3)">점수 계산 중...</div>
+        <!-- 점수 게이지 -->
+        <div style="position:relative;height:8px;background:linear-gradient(90deg,#3b82f6,#22c55e,#eab308,#f97316,#ef4444);border-radius:4px">
+          <div id="masterNeedle" style="position:absolute;top:-4px;width:4px;height:16px;background:white;border-radius:2px;box-shadow:0 0 4px rgba(0,0,0,0.5);transform:translateX(-50%);left:50%;transition:left 0.5s"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--text3)">
+          <span>강매도</span><span>매도</span><span>홀드</span><span>매수</span><span>강매수</span>
+        </div>
+        <div id="masterFilters" style="font-size:10px;color:var(--text3);margin-top:2px;line-height:1.5"></div>
+      </div>
+
     </div>
 
     <!-- 서머리 카드 -->
@@ -1233,6 +1322,9 @@ let state = {
   fearGreed: 8,
   coinFearGreed: null,
   koreanFearGreed: null,
+  yieldSpread: null,
+  hygData: null,
+  spTrend: null,
   fxRate: 1450,
   stocks: [],
   prices: {},
@@ -1645,6 +1737,296 @@ async function fetchKoreanFearGreed() {
   }
 }
 
+// ══════════════════════════════════════════════════════════
+// 장단기 금리차 (10년 - 2년 국채)
+// ══════════════════════════════════════════════════════════
+async function fetchYieldSpread() {
+  try {
+    const [d10, d2] = await Promise.all([
+      fetchViaProxy('https://query1.finance.yahoo.com/v8/finance/chart/%5ETNX?interval=1d&range=5d', 8000),
+      fetchViaProxy('https://query1.finance.yahoo.com/v8/finance/chart/%5ETWO?interval=1d&range=5d', 8000)
+    ]);
+    const y10 = d10?.chart?.result?.[0]?.meta?.regularMarketPrice;
+    const y2  = d2?.chart?.result?.[0]?.meta?.regularMarketPrice;
+    if (!y10 || !y2) return null;
+    return { y10, y2, spread: parseFloat((y10 - y2).toFixed(3)) };
+  } catch(e) { return null; }
+}
+
+// ══════════════════════════════════════════════════════════
+// HYG (하이일드 채권 ETF) - 신용시장 선행지표
+// ══════════════════════════════════════════════════════════
+async function fetchHYG() {
+  try {
+    const data = await fetchViaProxy(
+      'https://query1.finance.yahoo.com/v8/finance/chart/HYG?interval=1d&range=1y', 10000
+    );
+    const result = data?.chart?.result?.[0];
+    if (!result) return null;
+    const meta = result.meta;
+    const closes = result.indicators?.quote?.[0]?.close?.filter(v => v != null) || [];
+    if (!closes.length) return null;
+    const price = meta.regularMarketPrice;
+    const prevClose = meta.previousClose || meta.chartPreviousClose;
+    const low52 = Math.min(...closes);
+    const high52 = Math.max(...closes);
+    const pos52 = high52 > low52 ? (price - low52) / (high52 - low52) : 0.5;
+    return { price, prevClose, low52, high52, pos52 };
+  } catch(e) { return null; }
+}
+
+// ══════════════════════════════════════════════════════════
+// S&P500 + 200일 이동평균
+// ══════════════════════════════════════════════════════════
+async function fetchSP500Trend() {
+  try {
+    const data = await fetchViaProxy(
+      'https://query1.finance.yahoo.com/v8/finance/chart/%5EGSPC?interval=1d&range=1y', 10000
+    );
+    const result = data?.chart?.result?.[0];
+    if (!result) return null;
+    const meta = result.meta;
+    const closes = result.indicators?.quote?.[0]?.close?.filter(v => v != null) || [];
+    if (closes.length < 50) return null;
+    const price = meta.regularMarketPrice;
+    const prevClose = meta.previousClose || meta.chartPreviousClose;
+    // 200일 MA (데이터가 200개 미만이면 있는 것만 평균)
+    const maData = closes.slice(-200);
+    const ma200 = maData.reduce((a, b) => a + b, 0) / maData.length;
+    const vsMa = ((price - ma200) / ma200 * 100).toFixed(1);
+    return { price, prevClose, ma200: parseFloat(ma200.toFixed(2)), vsMa: parseFloat(vsMa) };
+  } catch(e) { return null; }
+}
+
+// ══════════════════════════════════════════════════════════
+// 종합 매매신호 계산
+// ══════════════════════════════════════════════════════════
+function calcMasterSignal() {
+  const fg = state.fearGreed;
+  const vix = state.vix?.price;
+  const pcr = state.pcr?.price;
+  const ys = state.yieldSpread;
+  const hyg = state.hygData;
+  const sp = state.spTrend;
+
+  let totalScore = 0, totalWeight = 0;
+  const filters = [];
+
+  // ── 레이어 3: 심리 점수 (F&G + VIX + PCR) ──────────────
+  // F&G → 공포 점수 (낮을수록 공포 = 매수)
+  if (fg != null) {
+    const fgScore = 100 - fg; // F&G 낮을수록 공포 = 매수신호
+    totalScore += fgScore * 0.35;
+    totalWeight += 0.35;
+  }
+  // VIX → 공포 점수
+  if (vix != null) {
+    const vixScore = vix <= 12 ? 0
+      : vix <= 16 ? ((vix-12)/4)*25
+      : vix <= 20 ? 25 + ((vix-16)/4)*25
+      : vix <= 30 ? 50 + ((vix-20)/10)*30
+      : vix <= 40 ? 80 + ((vix-30)/10)*15
+      : 95;
+    totalScore += vixScore * 0.30;
+    totalWeight += 0.30;
+  }
+  // PCR → 공포 점수
+  if (pcr != null) {
+    const pcrScore = pcr <= 0.5 ? 0
+      : pcr <= 0.7 ? ((pcr-0.5)/0.2)*30
+      : pcr <= 0.85 ? 30 + ((pcr-0.7)/0.15)*20
+      : pcr <= 1.0 ? 50 + ((pcr-0.85)/0.15)*25
+      : pcr <= 1.2 ? 75 + ((pcr-1.0)/0.2)*20
+      : 95;
+    totalScore += pcrScore * 0.20;
+    totalWeight += 0.20;
+  }
+
+  // 데이터 없으면 가중치 기준으로 정규화
+  let baseScore = totalWeight > 0 ? totalScore / totalWeight : 50;
+
+  // ── 레이어 1: 구조 필터 (장단기 금리차) ─────────────────
+  let yieldAdj = 0;
+  if (ys != null) {
+    if (ys.spread < 0) {
+      // 역전 중 → 경계 (1단계 하향)
+      yieldAdj = -12;
+      filters.push('⚠️ 금리차 역전 중');
+    } else if (ys.spread < 0.3 && ys.spread >= 0) {
+      // 역전 막 해소 → 가장 위험한 구간
+      yieldAdj = -8;
+      filters.push('⚠️ 금리차 역전 해소 직후 (위험 구간)');
+    } else if (ys.spread > 1.0) {
+      // 정상 스프레드 → 긍정적
+      yieldAdj = +5;
+    }
+  }
+
+  // ── 레이어 2: 추세 필터 (S&P500 200일 MA) ───────────────
+  let trendAdj = 0;
+  if (sp != null) {
+    if (sp.vsMa < -5) {
+      // 200일 MA 5% 이상 아래 → 하락추세, 매수신호 억제
+      trendAdj = -15;
+      filters.push('🔻 200MA 하향 추세 (매수신호 억제)');
+    } else if (sp.vsMa < 0) {
+      trendAdj = -5;
+      filters.push('📉 200MA 소폭 하회');
+    } else if (sp.vsMa > 5) {
+      trendAdj = +5;
+    }
+  }
+
+  // ── 레이어 4: 신용 경고 (HYG) ───────────────────────────
+  let creditAdj = 0;
+  if (hyg != null) {
+    if (hyg.pos52 < 0.1) {
+      creditAdj = -10;
+      filters.push('🚨 HYG 52주 저점 근처 (신용위기 경고)');
+    } else if (hyg.pos52 < 0.2) {
+      creditAdj = -5;
+      filters.push('⚡ HYG 신용시장 약세');
+    }
+  }
+
+  const finalScore = Math.max(0, Math.min(100, baseScore + yieldAdj + trendAdj + creditAdj));
+
+  // 신호 판정
+  let signal, color, emoji;
+  if (finalScore >= 78)      { signal='강력매수'; emoji='🔴'; color='#ef4444'; }
+  else if (finalScore >= 62) { signal='매수';    emoji='🟠'; color='#f97316'; }
+  else if (finalScore >= 38) { signal='홀드';    emoji='🟡'; color='#eab308'; }
+  else if (finalScore >= 22) { signal='매도';    emoji='🟢'; color='#22c55e'; }
+  else                       { signal='강력매도'; emoji='🔵'; color='#3b82f6'; }
+
+  return { finalScore, baseScore, signal, emoji, color, filters, yieldAdj, trendAdj, creditAdj };
+}
+
+// ══════════════════════════════════════════════════════════
+// 매매신호 UI 렌더
+// ══════════════════════════════════════════════════════════
+function renderSignalPanel() {
+  // 1. 장단기 금리차
+  const ys = state.yieldSpread;
+  if (ys) {
+    const spEl = document.getElementById('yieldSpread');
+    const y10El = document.getElementById('yield10y');
+    const y2El = document.getElementById('yield2y');
+    const descEl = document.getElementById('yieldDesc');
+    const barEl = document.getElementById('yieldBar');
+    const badgeEl = document.getElementById('yieldSignalBadge');
+    if (spEl) spEl.textContent = (ys.spread >= 0 ? '+' : '') + ys.spread.toFixed(2);
+    if (y10El) y10El.textContent = ys.y10.toFixed(2);
+    if (y2El) y2El.textContent = ys.y2.toFixed(2);
+    const isInverted = ys.spread < 0;
+    const isRecovering = ys.spread >= 0 && ys.spread < 0.3;
+    const desc = isInverted ? '🚨 역전 중 — 경기침체 선행 신호'
+      : isRecovering ? '⚠️ 역전 해소 직후 — 위험 구간'
+      : ys.spread > 1.0 ? '✅ 정상 스프레드 — 경기 확장'
+      : '🟡 정상 (좁은 스프레드)';
+    if (descEl) descEl.textContent = desc;
+    // 바 (0%=역전 극심, 50%=0, 100%=정상)
+    const barPct = Math.max(0, Math.min(100, (ys.spread + 1.5) / 3 * 100));
+    const barColor = isInverted ? '#ef4444' : isRecovering ? '#f97316' : '#22c55e';
+    if (barEl) { barEl.style.width = barPct + '%'; barEl.style.background = barColor; }
+    if (badgeEl) {
+      badgeEl.textContent = isInverted ? '역전' : isRecovering ? '회복중' : '정상';
+      badgeEl.style.background = barColor + '33';
+      badgeEl.style.color = barColor;
+    }
+    if (spEl) spEl.style.color = isInverted ? '#ef4444' : isRecovering ? '#f97316' : '#22c55e';
+  }
+
+  // 2. HYG
+  const hyg = state.hygData;
+  if (hyg) {
+    const priceEl = document.getElementById('hygPrice');
+    const chgEl = document.getElementById('hygChange');
+    const descEl = document.getElementById('hygDesc');
+    const labelEl = document.getElementById('hyg52label');
+    const markerEl = document.getElementById('hygMarker');
+    const badgeEl = document.getElementById('hygSignalBadge');
+    if (priceEl) priceEl.textContent = hyg.price.toFixed(2);
+    if (hyg.prevClose && chgEl) {
+      const chg = ((hyg.price - hyg.prevClose) / hyg.prevClose * 100);
+      chgEl.textContent = (chg >= 0 ? '+' : '') + chg.toFixed(2) + '%';
+      chgEl.style.color = chg >= 0 ? 'var(--green)' : 'var(--red)';
+    }
+    const pct = Math.round(hyg.pos52 * 100);
+    if (labelEl) labelEl.textContent = pct + '% 위치';
+    if (markerEl) markerEl.style.marginLeft = pct + '%';
+    const isWeak = hyg.pos52 < 0.2;
+    const isCrisis = hyg.pos52 < 0.1;
+    const desc = isCrisis ? '🚨 신용위기 경고 — 주식 선행 하락 신호'
+      : isWeak ? '⚠️ 신용시장 약세 — 주의'
+      : hyg.pos52 > 0.7 ? '✅ 신용시장 건전 — 안정적'
+      : '🟡 중립';
+    if (descEl) descEl.textContent = desc;
+    const badgeColor = isCrisis ? '#ef4444' : isWeak ? '#f97316' : hyg.pos52 > 0.7 ? '#22c55e' : '#eab308';
+    if (badgeEl) {
+      badgeEl.textContent = isCrisis ? '위기' : isWeak ? '약세' : hyg.pos52 > 0.7 ? '건전' : '중립';
+      badgeEl.style.background = badgeColor + '33';
+      badgeEl.style.color = badgeColor;
+    }
+  }
+
+  // 3. S&P500 추세
+  const sp = state.spTrend;
+  if (sp) {
+    const priceEl = document.getElementById('spPrice');
+    const chgEl = document.getElementById('spChange');
+    const maEl = document.getElementById('sp200ma');
+    const vsMaEl = document.getElementById('spVsMa');
+    const barEl = document.getElementById('spTrendBar');
+    const badgeEl = document.getElementById('spTrendBadge');
+    if (priceEl) priceEl.textContent = sp.price.toLocaleString('en-US', {maximumFractionDigits:0});
+    if (sp.prevClose && chgEl) {
+      const chg = ((sp.price - sp.prevClose) / sp.prevClose * 100);
+      chgEl.textContent = (chg >= 0 ? '+' : '') + chg.toFixed(2) + '%';
+      chgEl.style.color = chg >= 0 ? 'var(--green)' : 'var(--red)';
+    }
+    if (maEl) maEl.textContent = sp.ma200.toLocaleString('en-US', {maximumFractionDigits:0});
+    const isAbove = sp.vsMa >= 0;
+    const color = sp.vsMa < -5 ? '#ef4444' : sp.vsMa < 0 ? '#f97316' : sp.vsMa > 5 ? '#22c55e' : '#eab308';
+    if (vsMaEl) {
+      vsMaEl.textContent = (sp.vsMa >= 0 ? '+' : '') + sp.vsMa + '%';
+      vsMaEl.style.color = color;
+    }
+    // 바 50%=MA 위치, 좌우로 이탈 정도 표시
+    const barPct = Math.max(5, Math.min(95, 50 + sp.vsMa * 2));
+    if (barEl) { barEl.style.width = barPct + '%'; barEl.style.background = color; }
+    if (badgeEl) {
+      badgeEl.textContent = sp.vsMa < -5 ? '하락추세' : sp.vsMa < 0 ? 'MA 하회' : sp.vsMa > 5 ? '상승추세' : 'MA 근접';
+      badgeEl.style.background = color + '33';
+      badgeEl.style.color = color;
+    }
+  }
+
+  // 4. 종합 매매신호
+  const sig = calcMasterSignal();
+  const masterEl = document.getElementById('masterSignal');
+  const scoreEl = document.getElementById('masterScore');
+  const needleEl = document.getElementById('masterNeedle');
+  const filtersEl = document.getElementById('masterFilters');
+
+  if (masterEl) {
+    masterEl.textContent = sig.emoji + ' ' + sig.signal;
+    masterEl.style.color = sig.color;
+  }
+  if (scoreEl) {
+    scoreEl.textContent = `심리점수 ${Math.round(sig.baseScore)}점 → 조정 후 ${Math.round(sig.finalScore)}점`;
+  }
+  if (needleEl) {
+    // 강매도=0% 강매수=100%
+    needleEl.style.left = sig.finalScore + '%';
+  }
+  if (filtersEl) {
+    filtersEl.innerHTML = sig.filters.length > 0
+      ? sig.filters.map(f => `<div>${f}</div>`).join('')
+      : '<div style="color:var(--green)">✅ 필터 이상 없음</div>';
+  }
+}
+
 async function fetchVIX() {
   const url = 'https://query1.finance.yahoo.com/v8/finance/chart/%5EVIX?interval=1wk&range=1y';
   const data = await fetchViaProxy(url, 6000);
@@ -1850,9 +2232,10 @@ async function refreshAll() {
   icon.innerHTML = '<span class="spinner"></span>';
 
   try {
-    const [prices, fx, fg, vix, pcr, coinFg, krFg] = await Promise.all([
+    const [prices, fx, fg, vix, pcr, coinFg, krFg, yieldData, hygData, spData] = await Promise.all([
       fetchPrices(), fetchFX(), fetchFearGreed(), fetchVIX(), fetchPCR(),
-      fetchCoinFearGreed(), fetchKoreanFearGreed()
+      fetchCoinFearGreed(), fetchKoreanFearGreed(),
+      fetchYieldSpread(), fetchHYG(), fetchSP500Trend()
     ]);
 
     // 신규 가격만 업데이트 (기존 정상 가격 보존)
@@ -1865,6 +2248,9 @@ async function refreshAll() {
     if (pcr) state.pcr = pcr;
     if (coinFg) state.coinFearGreed = coinFg;
     if (krFg) state.koreanFearGreed = krFg;
+    if (yieldData) state.yieldSpread = yieldData;
+    if (hygData) state.hygData = hygData;
+    if (spData) state.spTrend = spData;
 
     state.lastUpdate = new Date();
     document.getElementById('lastUpdate').textContent =
@@ -1944,7 +2330,7 @@ function getTotalCost(includeExcluded = false) {
 // ===== 렌더링 =====
 // 탭별 렌더 함수 매핑
 const _tabRenderMap = {
-  'dashboard':  [renderDashboard, updateFGMeter, renderVixFxPanel, renderHedgePanel],
+  'dashboard':  [renderDashboard, updateFGMeter, renderVixFxPanel, renderHedgePanel, renderSignalPanel],
   'holdings':   [renderHoldings],
   'rebalance':  [renderRebalAccountBtns],
   'plan':       [renderRebalAccountBtns],
