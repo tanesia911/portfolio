@@ -684,6 +684,7 @@
 
 <div class="tabs">
   <button class="tab active" data-tab="dashboard" onclick="showTab('dashboard')">📊 <span class="tab-label">대시보드</span></button>
+  <button class="tab" data-tab="indicators" onclick="showTab('indicators')">📡 <span class="tab-label">투자지표</span></button>
   <button class="tab" data-tab="holdings" onclick="showTab('holdings')">📋 <span class="tab-label">보유종목</span></button>
   <button class="tab" data-tab="rebalance" onclick="showTab('rebalance')">⚖️ <span class="tab-label">리밸런싱</span></button>
   <button class="tab" data-tab="plan" onclick="showTab('plan')">📝 <span class="tab-label">매매플랜</span></button>
@@ -693,6 +694,108 @@
 
 <!-- 대시보드 -->
 <div id="page-dashboard" class="page active">
+  <div class="container">
+
+    <!-- 서머리 카드 -->
+    <div class="summary-grid" id="summaryCards">
+      <div class="summary-card">
+        <div class="card-label">📂 일반계좌 평가금</div>
+        <div class="card-value" id="sumNormalValue">₩0</div>
+        <div class="card-sub" id="sumNormalSub" style="display:flex;flex-direction:column;gap:2px">-</div>
+      </div>
+      <div class="summary-card">
+        <div class="card-label">🔒 제외계좌 평가금</div>
+        <div class="card-value" id="sumExcludedValue">₩0</div>
+        <div class="card-sub" id="sumExcludedSub" style="display:flex;flex-direction:column;gap:2px">-</div>
+      </div>
+      <div class="summary-card" style="cursor:pointer" onclick="focusBalanceInput()" title="설정에서 실제 잔고를 입력하면 정확해집니다">
+        <div class="card-label">💰 순자산 <span style="font-size:10px;color:var(--text3);font-weight:400">(실잔고 기준)</span></div>
+        <div class="card-value" id="sumNetAsset">₩0</div>
+        <div class="card-sub" id="sumNetAssetSub" style="display:flex;flex-direction:column;gap:2px">-</div>
+      </div>
+    </div>
+
+    <!-- 계좌별 현황 -->
+    <div class="section">
+      <div class="section-title">계좌별 현황</div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>계좌</th>
+              <th>매입비용</th>
+              <th>평가금액</th>
+              <th>수익금</th>
+              <th>수익률</th>
+              <th>현재 비중</th>
+              <th>목표 비중</th>
+              <th>차이</th>
+            </tr>
+          </thead>
+          <tbody id="accountTable">
+            <tr><td colspan="8" class="empty-msg">로딩 중...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 자산군 현황 -->
+    <div class="section">
+      <div class="section-title">자산군 현황</div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>자산군</th>
+              <th>매입비용</th>
+              <th>평가금액</th>
+              <th>수익금</th>
+              <th>수익률</th>
+              <th>비중</th>
+            </tr>
+          </thead>
+          <tbody id="assetGroupTable">
+            <tr><td colspan="6" class="empty-msg">로딩 중...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 📊 자산 차트 -->
+    <div class="section">
+      <div class="section-title" style="display:flex;align-items:center;justify-content:space-between">
+        <span>📊 자산 배분 현황</span>
+        <div style="display:flex;gap:6px">
+          <button id="chartViewBtn1" onclick="setChartView('group')"
+            style="font-size:11px;padding:3px 10px;border-radius:6px;cursor:pointer;font-family:inherit;font-weight:600;background:var(--accent);border:none;color:#000;">자산군</button>
+          <button id="chartViewBtn2" onclick="setChartView('account')"
+            style="font-size:11px;padding:3px 10px;border-radius:6px;cursor:pointer;font-family:inherit;font-weight:600;background:var(--surface2);border:1px solid var(--border);color:var(--text2);">계좌</button>
+        </div>
+      </div>
+      <div style="display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap">
+        <!-- 도넛 차트 -->
+        <div style="position:relative;flex-shrink:0">
+          <canvas id="donutChart" width="200" height="200" style="display:block"></canvas>
+          <div id="donutCenter" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;pointer-events:none">
+            <div id="donutCenterLabel" style="font-size:11px;color:var(--text3)">총 평가금</div>
+            <div id="donutCenterValue" style="font-size:15px;font-weight:700;color:var(--text);font-family:'JetBrains Mono',monospace">-</div>
+          </div>
+        </div>
+        <!-- 범례 + 바 차트 -->
+        <div id="chartLegend" style="flex:1;min-width:160px;display:flex;flex-direction:column;gap:7px;padding-top:8px"></div>
+      </div>
+    </div>
+
+    <!-- 환헤지 -->
+    <div class="section">
+      <div class="section-title">환헤지 분석 <span style="font-size:11px;color:var(--text3);font-weight:400">달러 노출 비중</span></div>
+      <div id="hedgePanel"></div>
+    </div>
+  </div>
+</div>
+
+<!-- 투자지표 -->
+<div id="page-indicators" class="page">
   <div class="container">
     <!-- Fear & Greed 3종 -->
     <div class="fg-grid">
@@ -876,117 +979,49 @@
         <div style="font-size:10px;color:var(--text3);line-height:1.4">200일 MA 위 = 상승추세(매수신호 유효).<br>아래 = 하락추세(매수신호 억제)</div>
       </div>
 
-      <!-- 종합 매매신호 카드 -->
+      <!-- 종합 매매신호 카드 (3축 판정) -->
       <div class="summary-card" style="display:flex;flex-direction:column;gap:8px;border:1px solid var(--border)">
         <div class="card-label">🎯 종합 매매신호</div>
-        <div id="masterSignal" style="font-size:22px;font-weight:900;text-align:center;padding:8px 0;letter-spacing:-0.5px">-</div>
-        <div id="masterScore" style="text-align:center;font-size:11px;color:var(--text3)">점수 계산 중...</div>
-        <!-- 점수 게이지 -->
-        <div style="position:relative;height:8px;background:linear-gradient(90deg,#3b82f6,#22c55e,#eab308,#f97316,#ef4444);border-radius:4px">
-          <div id="masterNeedle" style="position:absolute;top:-4px;width:4px;height:16px;background:white;border-radius:2px;box-shadow:0 0 4px rgba(0,0,0,0.5);transform:translateX(-50%);left:50%;transition:left 0.5s"></div>
+        <!-- 최종 신호 -->
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <div id="masterSignal" style="font-size:20px;font-weight:900;letter-spacing:-0.5px">-</div>
+          <div id="masterConfidence" style="font-size:9px;font-weight:700;padding:2px 6px;border-radius:8px;background:var(--surface2);color:var(--text3)">-</div>
         </div>
-        <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--text3)">
-          <span>강매도</span><span>매도</span><span>홀드</span><span>매수</span><span>강매수</span>
-        </div>
-        <div id="masterFilters" style="font-size:10px;color:var(--text3);margin-top:2px;line-height:1.5"></div>
-      </div>
-
-    </div>
-
-    <!-- 서머리 카드 -->
-    <div class="summary-grid" id="summaryCards">
-      <div class="summary-card">
-        <div class="card-label">📂 일반계좌 평가금</div>
-        <div class="card-value" id="sumNormalValue">₩0</div>
-        <div class="card-sub" id="sumNormalSub" style="display:flex;flex-direction:column;gap:2px">-</div>
-      </div>
-      <div class="summary-card">
-        <div class="card-label">🔒 제외계좌 평가금</div>
-        <div class="card-value" id="sumExcludedValue">₩0</div>
-        <div class="card-sub" id="sumExcludedSub" style="display:flex;flex-direction:column;gap:2px">-</div>
-      </div>
-      <div class="summary-card" style="cursor:pointer" onclick="focusBalanceInput()" title="설정에서 실제 잔고를 입력하면 정확해집니다">
-        <div class="card-label">💰 순자산 <span style="font-size:10px;color:var(--text3);font-weight:400">(실잔고 기준)</span></div>
-        <div class="card-value" id="sumNetAsset">₩0</div>
-        <div class="card-sub" id="sumNetAssetSub" style="display:flex;flex-direction:column;gap:2px">-</div>
-      </div>
-    </div>
-
-    <!-- 계좌별 현황 -->
-    <div class="section">
-      <div class="section-title">계좌별 현황</div>
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>계좌</th>
-              <th>매입비용</th>
-              <th>평가금액</th>
-              <th>수익금</th>
-              <th>수익률</th>
-              <th>현재 비중</th>
-              <th>목표 비중</th>
-              <th>차이</th>
-            </tr>
-          </thead>
-          <tbody id="accountTable">
-            <tr><td colspan="8" class="empty-msg">로딩 중...</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- 자산군 현황 -->
-    <div class="section">
-      <div class="section-title">자산군 현황</div>
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>자산군</th>
-              <th>매입비용</th>
-              <th>평가금액</th>
-              <th>수익금</th>
-              <th>수익률</th>
-              <th>비중</th>
-            </tr>
-          </thead>
-          <tbody id="assetGroupTable">
-            <tr><td colspan="6" class="empty-msg">로딩 중...</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- 📊 자산 차트 -->
-    <div class="section">
-      <div class="section-title" style="display:flex;align-items:center;justify-content:space-between">
-        <span>📊 자산 배분 현황</span>
-        <div style="display:flex;gap:6px">
-          <button id="chartViewBtn1" onclick="setChartView('group')"
-            style="font-size:11px;padding:3px 10px;border-radius:6px;cursor:pointer;font-family:inherit;font-weight:600;background:var(--accent);border:none;color:#000;">자산군</button>
-          <button id="chartViewBtn2" onclick="setChartView('account')"
-            style="font-size:11px;padding:3px 10px;border-radius:6px;cursor:pointer;font-family:inherit;font-weight:600;background:var(--surface2);border:1px solid var(--border);color:var(--text2);">계좌</button>
-        </div>
-      </div>
-      <div style="display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap">
-        <!-- 도넛 차트 -->
-        <div style="position:relative;flex-shrink:0">
-          <canvas id="donutChart" width="200" height="200" style="display:block"></canvas>
-          <div id="donutCenter" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;pointer-events:none">
-            <div id="donutCenterLabel" style="font-size:11px;color:var(--text3)">총 평가금</div>
-            <div id="donutCenterValue" style="font-size:15px;font-weight:700;color:var(--text);font-family:'JetBrains Mono',monospace">-</div>
+        <!-- 판단 이유 -->
+        <div id="masterReason" style="font-size:10px;color:var(--text2);line-height:1.5;min-height:28px">분석 중...</div>
+        <!-- 3축 미니 게이지 -->
+        <div style="display:flex;flex-direction:column;gap:5px;margin-top:2px">
+          <!-- X축: 심리 공포도 -->
+          <div style="display:flex;align-items:center;gap:6px">
+            <div style="font-size:9px;color:var(--text3);width:44px;flex-shrink:0">😱 공포도</div>
+            <div style="flex:1;height:5px;background:var(--border);border-radius:3px;overflow:hidden">
+              <div id="fearBar" style="height:100%;border-radius:3px;transition:width 0.5s,background 0.5s;width:50%;background:var(--yellow)"></div>
+            </div>
+            <div id="fearLabel" style="font-size:9px;font-weight:700;width:28px;text-align:right;color:var(--text2)">-</div>
+          </div>
+          <!-- Y축: 구조 안전도 -->
+          <div style="display:flex;align-items:center;gap:6px">
+            <div style="font-size:9px;color:var(--text3);width:44px;flex-shrink:0">🏗 구조</div>
+            <div style="flex:1;height:5px;background:var(--border);border-radius:3px;overflow:hidden">
+              <div id="safeBar" style="height:100%;border-radius:3px;transition:width 0.5s,background 0.5s;width:50%;background:var(--yellow)"></div>
+            </div>
+            <div id="safeLabel" style="font-size:9px;font-weight:700;width:28px;text-align:right;color:var(--text2)">-</div>
+          </div>
+          <!-- Z축: 추세 국면 -->
+          <div style="display:flex;align-items:center;gap:6px">
+            <div style="font-size:9px;color:var(--text3);width:44px;flex-shrink:0">📈 추세</div>
+            <div style="flex:1;height:5px;background:var(--border);border-radius:3px;overflow:hidden">
+              <div id="trendBar" style="height:100%;border-radius:3px;transition:width 0.5s,background 0.5s;width:50%;background:var(--yellow)"></div>
+            </div>
+            <div id="trendLabel" style="font-size:9px;font-weight:700;width:28px;text-align:right;color:var(--text2)">-</div>
           </div>
         </div>
-        <!-- 범례 + 바 차트 -->
-        <div id="chartLegend" style="flex:1;min-width:160px;display:flex;flex-direction:column;gap:7px;padding-top:8px"></div>
+        <!-- 축 설명 -->
+        <div style="font-size:9px;color:var(--text3);line-height:1.4;border-top:1px solid var(--border);padding-top:5px">
+          공포도↑ = 역발상 매수기회 · 구조↑ = 지금 안전 · 추세 = 체제확인
+        </div>
       </div>
-    </div>
 
-    <!-- 환헤지 -->
-    <div class="section">
-      <div class="section-title">환헤지 분석 <span style="font-size:11px;color:var(--text3);font-weight:400">달러 노출 비중</span></div>
-      <div id="hedgePanel"></div>
     </div>
   </div>
 </div>
@@ -1808,105 +1843,200 @@ async function fetchSP500Trend() {
 // ══════════════════════════════════════════════════════════
 // 종합 매매신호 계산
 // ══════════════════════════════════════════════════════════
+// 3축 독립 판정 시스템
+// X축: 심리 공포도 (역발상 매수 타이밍)
+// Y축: 구조 안전도 (지금 당장 안전한가)
+// Z축: 추세 국면  (강세장/약세장 체제)
+// ══════════════════════════════════════════════════════════
 function calcMasterSignal() {
-  const fg = state.fearGreed;
+  const fg  = state.fearGreed;
   const vix = state.vix?.price;
   const pcr = state.pcr?.price;
-  const ys = state.yieldSpread;
+  const ys  = state.yieldSpread;
   const hyg = state.hygData;
-  const sp = state.spTrend;
+  const sp  = state.spTrend;
 
-  let totalScore = 0, totalWeight = 0;
-  const filters = [];
+  // ─────────────────────────────────────────
+  // X축: 심리 공포도 (0~100, 높을수록 극단공포)
+  // PCR 40% + VIX 35% + F&G 25%
+  // ─────────────────────────────────────────
+  let fearTotal = 0, fearWeight = 0;
 
-  // ── 레이어 3: 심리 점수 (F&G + VIX + PCR) ──────────────
-  // F&G → 공포 점수 (낮을수록 공포 = 매수)
-  if (fg != null) {
-    const fgScore = 100 - fg; // F&G 낮을수록 공포 = 매수신호
-    totalScore += fgScore * 0.35;
-    totalWeight += 0.35;
-  }
-  // VIX → 공포 점수
-  if (vix != null) {
-    const vixScore = vix <= 12 ? 0
-      : vix <= 16 ? ((vix-12)/4)*25
-      : vix <= 20 ? 25 + ((vix-16)/4)*25
-      : vix <= 30 ? 50 + ((vix-20)/10)*30
-      : vix <= 40 ? 80 + ((vix-30)/10)*15
-      : 95;
-    totalScore += vixScore * 0.30;
-    totalWeight += 0.30;
-  }
-  // PCR → 공포 점수
   if (pcr != null) {
+    // PCR: 실제 옵션 거래 기반 — 가장 독립적인 신호
     const pcrScore = pcr <= 0.5 ? 0
-      : pcr <= 0.7 ? ((pcr-0.5)/0.2)*30
-      : pcr <= 0.85 ? 30 + ((pcr-0.7)/0.15)*20
-      : pcr <= 1.0 ? 50 + ((pcr-0.85)/0.15)*25
-      : pcr <= 1.2 ? 75 + ((pcr-1.0)/0.2)*20
+      : pcr <= 0.7  ? ((pcr-0.5)/0.2)*25
+      : pcr <= 0.85 ? 25 + ((pcr-0.7)/0.15)*25
+      : pcr <= 1.0  ? 50 + ((pcr-0.85)/0.15)*25
+      : pcr <= 1.2  ? 75 + ((pcr-1.0)/0.2)*20
       : 95;
-    totalScore += pcrScore * 0.20;
-    totalWeight += 0.20;
+    fearTotal += pcrScore * 0.40; fearWeight += 0.40;
   }
-
-  // 데이터 없으면 가중치 기준으로 정규화
-  let baseScore = totalWeight > 0 ? totalScore / totalWeight : 50;
-
-  // ── 레이어 1: 구조 필터 (장단기 금리차) ─────────────────
-  let yieldAdj = 0;
-  if (ys != null) {
-    if (ys.spread < 0) {
-      // 역전 중 → 경계 (1단계 하향)
-      yieldAdj = -12;
-      filters.push('⚠️ 금리차 역전 중');
-    } else if (ys.spread < 0.3 && ys.spread >= 0) {
-      // 역전 막 해소 → 가장 위험한 구간
-      yieldAdj = -8;
-      filters.push('⚠️ 금리차 역전 해소 직후 (위험 구간)');
-    } else if (ys.spread > 1.0) {
-      // 정상 스프레드 → 긍정적
-      yieldAdj = +5;
-    }
+  if (vix != null) {
+    // VIX: 즉각적 변동성 반응, 옵션 가격 기반
+    const vixScore = vix <= 12 ? 0
+      : vix <= 16 ? ((vix-12)/4)*20
+      : vix <= 20 ? 20 + ((vix-16)/4)*20
+      : vix <= 30 ? 40 + ((vix-20)/10)*35
+      : vix <= 40 ? 75 + ((vix-30)/10)*15
+      : 90 + Math.min((vix-40)/10*5, 5);
+    fearTotal += vixScore * 0.35; fearWeight += 0.35;
   }
-
-  // ── 레이어 2: 추세 필터 (S&P500 200일 MA) ───────────────
-  let trendAdj = 0;
-  if (sp != null) {
-    if (sp.vsMa < -5) {
-      // 200일 MA 5% 이상 아래 → 하락추세, 매수신호 억제
-      trendAdj = -15;
-      filters.push('🔻 200MA 하향 추세 (매수신호 억제)');
-    } else if (sp.vsMa < 0) {
-      trendAdj = -5;
-      filters.push('📉 200MA 소폭 하회');
-    } else if (sp.vsMa > 5) {
-      trendAdj = +5;
-    }
+  if (fg != null) {
+    // F&G: 복합 심리 지수 (VIX 내포로 중복 있어 비중 낮춤)
+    const fgScore = 100 - fg;
+    fearTotal += fgScore * 0.25; fearWeight += 0.25;
   }
+  const fearScore = fearWeight > 0 ? fearTotal / fearWeight : 50;
 
-  // ── 레이어 4: 신용 경고 (HYG) ───────────────────────────
-  let creditAdj = 0;
+  // 공포 등급: LOW(탐욕) / MID(중립) / HIGH(공포) / EXTREME(극단공포)
+  const fearLevel = fearScore >= 72 ? 'EXTREME'
+    : fearScore >= 52 ? 'HIGH'
+    : fearScore >= 35 ? 'MID'
+    : 'LOW';
+
+  // ─────────────────────────────────────────
+  // Y축: 구조 안전도 (0~100, 높을수록 안전)
+  // HYG 60% (2~8주 선행) + 금리차 방향성 40%
+  // ─────────────────────────────────────────
+  let safeTotal = 0, safeWeight = 0;
+
   if (hyg != null) {
-    if (hyg.pos52 < 0.1) {
-      creditAdj = -10;
-      filters.push('🚨 HYG 52주 저점 근처 (신용위기 경고)');
-    } else if (hyg.pos52 < 0.2) {
-      creditAdj = -5;
-      filters.push('⚡ HYG 신용시장 약세');
+    // HYG: 52주 위치 + 모멘텀 결합
+    // 위치 점수: 52주 위치가 높을수록 신용시장 건전
+    const posScore = Math.min(hyg.pos52 * 100, 100);
+    // 모멘텀 점수: 전일 대비 방향
+    let momScore = 50;
+    if (hyg.prevClose && hyg.price) {
+      const chgPct = (hyg.price - hyg.prevClose) / hyg.prevClose * 100;
+      momScore = chgPct > 0.3 ? 75 : chgPct > 0 ? 60 : chgPct > -0.3 ? 40 : 20;
+    }
+    const hygScore = posScore * 0.7 + momScore * 0.3;
+    safeTotal += hygScore * 0.60; safeWeight += 0.60;
+  }
+  if (ys != null && ys.spread != null) {
+    // 금리차: 레벨이 아닌 '방향성' 으로 판단
+    // 역전 진행 중 → 위험 심화 / 역전 → 정상화 방향 → 오히려 바닥 신호
+    let yieldScore;
+    if (ys.spread > 1.0)        yieldScore = 85; // 완전 정상
+    else if (ys.spread > 0.3)   yieldScore = 65; // 정상화 중
+    else if (ys.spread >= 0)    yieldScore = 45; // 역전 막 해소 (위험 구간)
+    else if (ys.spread >= -0.5) yieldScore = 30; // 역전 진행
+    else                        yieldScore = 15; // 깊은 역전
+    safeTotal += yieldScore * 0.40; safeWeight += 0.40;
+  }
+  const safeScore = safeWeight > 0 ? safeTotal / safeWeight : 50;
+
+  // 구조 등급: CRISIS / WARN / NEUTRAL / SAFE
+  const safeLevel = safeScore >= 65 ? 'SAFE'
+    : safeScore >= 45 ? 'NEUTRAL'
+    : safeScore >= 25 ? 'WARN'
+    : 'CRISIS';
+
+  // ─────────────────────────────────────────
+  // Z축: 추세 국면 (200일 MA 기준)
+  // ─────────────────────────────────────────
+  let trendLevel = 'UNKNOWN';
+  if (sp != null) {
+    trendLevel = sp.vsMa >= 5  ? 'BULL'    // 강세 확인
+      : sp.vsMa >= 0  ? 'NEUTRAL' // MA 근처
+      : sp.vsMa >= -5 ? 'CAUTION' // 약간 하회
+      : 'BEAR';                    // 하락추세
+  }
+
+  // ─────────────────────────────────────────
+  // 3축 조합 판정 테이블
+  // ─────────────────────────────────────────
+  let signal, color, emoji, reason, confidence;
+
+  // 구조 위기 → 공포가 높아도 함정
+  if (safeLevel === 'CRISIS') {
+    if (fearLevel === 'EXTREME' || fearLevel === 'HIGH') {
+      signal = '위험매수금지'; emoji = '🚨'; color = '#dc2626';
+      reason = '신용·금리 구조 붕괴 중. 공포에 사면 안 되는 구간 (2008년 패턴)';
+      confidence = 'HIGH';
+    } else {
+      signal = '강력매도'; emoji = '🔵'; color = '#3b82f6';
+      reason = '구조적 위기 신호. 현금 비중 확대 구간';
+      confidence = 'HIGH';
+    }
+  }
+  // 구조 경고
+  else if (safeLevel === 'WARN') {
+    if (fearLevel === 'EXTREME') {
+      signal = '홀드'; emoji = '🟡'; color = '#eab308';
+      reason = '극단 공포지만 신용·구조 경고 중. 분할매수 소량만 가능';
+      confidence = 'LOW';
+    } else if (fearLevel === 'HIGH') {
+      signal = '홀드'; emoji = '🟡'; color = '#eab308';
+      reason = '구조 불안정. 공포 신호를 신뢰하기 어려운 환경';
+      confidence = 'LOW';
+    } else {
+      signal = '매도'; emoji = '🟢'; color = '#22c55e';
+      reason = '구조 경고 + 공포 미달. 리스크 축소 권장';
+      confidence = 'MID';
+    }
+  }
+  // 구조 중립
+  else if (safeLevel === 'NEUTRAL') {
+    if (fearLevel === 'EXTREME') {
+      signal = trendLevel === 'BEAR' ? '매수(보수적)' : '매수';
+      emoji = '🟠'; color = '#f97316';
+      reason = trendLevel === 'BEAR'
+        ? '극단 공포 + 구조 중립. 추세 약세라 소량 분할매수'
+        : '극단 공포 + 구조 중립. 분할매수 고려';
+      confidence = 'MID';
+    } else if (fearLevel === 'HIGH') {
+      signal = '홀드'; emoji = '🟡'; color = '#eab308';
+      reason = '공포 있지만 구조 확신 부족. 관망 우선';
+      confidence = 'LOW';
+    } else if (fearLevel === 'LOW') {
+      signal = '매도'; emoji = '🟢'; color = '#22c55e';
+      reason = '탐욕 구간. 차익실현 고려';
+      confidence = 'MID';
+    } else {
+      signal = '홀드'; emoji = '🟡'; color = '#eab308';
+      reason = '중립 국면. 뚜렷한 방향성 없음';
+      confidence = 'LOW';
+    }
+  }
+  // 구조 안전
+  else { // SAFE
+    if (fearLevel === 'EXTREME') {
+      signal = trendLevel === 'BULL' ? '강력매수' : '매수';
+      emoji = trendLevel === 'BULL' ? '🔴' : '🟠';
+      color = trendLevel === 'BULL' ? '#ef4444' : '#f97316';
+      reason = trendLevel === 'BULL'
+        ? '최적 매수 구간: 극단공포 + 구조안전 + 강세추세'
+        : '매수 구간: 극단공포 + 구조안전. 추세 확인 후 비중 확대';
+      confidence = 'HIGH';
+    } else if (fearLevel === 'HIGH') {
+      signal = trendLevel === 'BEAR' ? '매수(보수적)' : '매수';
+      emoji = '🟠'; color = '#f97316';
+      reason = trendLevel === 'BEAR'
+        ? '공포 + 구조안전이나 추세 하락 중. 소량 분할매수'
+        : '공포 + 구조안전. 매수 유효 구간';
+      confidence = trendLevel === 'BEAR' ? 'MID' : 'HIGH';
+    } else if (fearLevel === 'MID') {
+      signal = trendLevel === 'BULL' ? '홀드' : '홀드';
+      emoji = '🟡'; color = '#eab308';
+      reason = '구조 양호하나 공포 부족. 추가 눌림 대기';
+      confidence = 'LOW';
+    } else { // LOW (탐욕)
+      signal = trendLevel === 'BULL' ? '매도' : '매도';
+      emoji = '🟢'; color = '#22c55e';
+      reason = '탐욕 + 구조 양호 = 고점 근처. 차익실현 구간';
+      confidence = 'MID';
     }
   }
 
-  const finalScore = Math.max(0, Math.min(100, baseScore + yieldAdj + trendAdj + creditAdj));
-
-  // 신호 판정
-  let signal, color, emoji;
-  if (finalScore >= 78)      { signal='강력매수'; emoji='🔴'; color='#ef4444'; }
-  else if (finalScore >= 62) { signal='매수';    emoji='🟠'; color='#f97316'; }
-  else if (finalScore >= 38) { signal='홀드';    emoji='🟡'; color='#eab308'; }
-  else if (finalScore >= 22) { signal='매도';    emoji='🟢'; color='#22c55e'; }
-  else                       { signal='강력매도'; emoji='🔵'; color='#3b82f6'; }
-
-  return { finalScore, baseScore, signal, emoji, color, filters, yieldAdj, trendAdj, creditAdj };
+  return {
+    signal, emoji, color, reason, confidence,
+    fearScore: Math.round(fearScore),
+    safeScore: Math.round(safeScore),
+    fearLevel, safeLevel, trendLevel,
+    sp
+  };
 }
 
 // ══════════════════════════════════════════════════════════
@@ -2018,28 +2148,68 @@ function renderSignalPanel() {
     }
   }
 
-  // 4. 종합 매매신호
+  // 4. 종합 매매신호 (3축 판정)
   const sig = calcMasterSignal();
-  const masterEl = document.getElementById('masterSignal');
-  const scoreEl = document.getElementById('masterScore');
-  const needleEl = document.getElementById('masterNeedle');
-  const filtersEl = document.getElementById('masterFilters');
+
+  const masterEl    = document.getElementById('masterSignal');
+  const reasonEl    = document.getElementById('masterReason');
+  const confidenceEl= document.getElementById('masterConfidence');
+  const fearBarEl   = document.getElementById('fearBar');
+  const fearLabelEl = document.getElementById('fearLabel');
+  const safeBarEl   = document.getElementById('safeBar');
+  const safeLabelEl = document.getElementById('safeLabel');
+  const trendBarEl  = document.getElementById('trendBar');
+  const trendLabelEl= document.getElementById('trendLabel');
 
   if (masterEl) {
     masterEl.textContent = sig.emoji + ' ' + sig.signal;
     masterEl.style.color = sig.color;
   }
-  if (scoreEl) {
-    scoreEl.textContent = `심리점수 ${Math.round(sig.baseScore)}점 → 조정 후 ${Math.round(sig.finalScore)}점`;
+  if (reasonEl) reasonEl.textContent = sig.reason || '-';
+  if (confidenceEl) {
+    const cMap = { HIGH: ['높음','#22c55e33','#22c55e'], MID: ['보통','#eab30833','#eab308'], LOW: ['낮음','#94a3b833','#94a3b8'] };
+    const [txt, bg, cl] = cMap[sig.confidence] || ['?', 'var(--surface2)', 'var(--text3)'];
+    confidenceEl.textContent = '신뢰도 ' + txt;
+    confidenceEl.style.background = bg;
+    confidenceEl.style.color = cl;
   }
-  if (needleEl) {
-    // 강매도=0% 강매수=100%
-    needleEl.style.left = sig.finalScore + '%';
+
+  // X축: 심리 공포도 게이지
+  if (fearBarEl) {
+    const fc = sig.fearScore >= 72 ? '#ef4444' : sig.fearScore >= 52 ? '#f97316' : sig.fearScore >= 35 ? '#eab308' : '#22c55e';
+    fearBarEl.style.width = sig.fearScore + '%';
+    fearBarEl.style.background = fc;
   }
-  if (filtersEl) {
-    filtersEl.innerHTML = sig.filters.length > 0
-      ? sig.filters.map(f => `<div>${f}</div>`).join('')
-      : '<div style="color:var(--green)">✅ 필터 이상 없음</div>';
+  if (fearLabelEl) {
+    const fl = { EXTREME:'극공포', HIGH:'공포', MID:'중립', LOW:'탐욕' };
+    fearLabelEl.textContent = fl[sig.fearLevel] || '-';
+    fearLabelEl.style.color = sig.fearScore >= 52 ? '#f97316' : '#22c55e';
+  }
+
+  // Y축: 구조 안전도 게이지
+  if (safeBarEl) {
+    const sc = sig.safeScore >= 65 ? '#22c55e' : sig.safeScore >= 45 ? '#eab308' : sig.safeScore >= 25 ? '#f97316' : '#ef4444';
+    safeBarEl.style.width = sig.safeScore + '%';
+    safeBarEl.style.background = sc;
+  }
+  if (safeLabelEl) {
+    const sl = { SAFE:'안전', NEUTRAL:'중립', WARN:'경고', CRISIS:'위기' };
+    safeLabelEl.textContent = sl[sig.safeLevel] || '-';
+    safeLabelEl.style.color = sig.safeScore >= 65 ? '#22c55e' : sig.safeScore >= 45 ? '#eab308' : '#ef4444';
+  }
+
+  // Z축: 추세 국면 게이지
+  if (trendBarEl && sig.sp) {
+    const tPct = Math.max(5, Math.min(95, 50 + sig.sp.vsMa * 3));
+    const tc = sig.sp.vsMa >= 5 ? '#22c55e' : sig.sp.vsMa >= 0 ? '#eab308' : sig.sp.vsMa >= -5 ? '#f97316' : '#ef4444';
+    trendBarEl.style.width = tPct + '%';
+    trendBarEl.style.background = tc;
+  }
+  if (trendLabelEl) {
+    const tl = { BULL:'강세', NEUTRAL:'중립', CAUTION:'주의', BEAR:'약세', UNKNOWN:'-' };
+    trendLabelEl.textContent = tl[sig.trendLevel] || '-';
+    const tc2 = sig.trendLevel === 'BULL' ? '#22c55e' : sig.trendLevel === 'BEAR' ? '#ef4444' : '#eab308';
+    trendLabelEl.style.color = tc2;
   }
 }
 
@@ -2347,7 +2517,8 @@ function getTotalCost(includeExcluded = false) {
 // ===== 렌더링 =====
 // 탭별 렌더 함수 매핑
 const _tabRenderMap = {
-  'dashboard':  [renderDashboard, updateFGMeter, renderVixFxPanel, renderHedgePanel, renderSignalPanel],
+  'dashboard':  [renderDashboard, renderHedgePanel],
+  'indicators': [updateFGMeter, renderVixFxPanel, renderSignalPanel],
   'holdings':   [renderHoldings],
   'rebalance':  [renderRebalAccountBtns],
   'plan':       [renderRebalAccountBtns],
@@ -4874,5 +5045,80 @@ function openReportWindow(autoPrint) {
 function exportReportPDF() { openReportWindow(true); }
 
 </script>
+<!-- Pull to Refresh -->
+<script>
+(function() {
+  let startY = 0, pulling = false, indicator = null;
+  const THRESHOLD = 70;
+
+  function createIndicator() {
+    const el = document.createElement('div');
+    el.id = 'ptr-indicator';
+    el.style.cssText = [
+      'position:fixed', 'top:0', 'left:50%', 'transform:translateX(-50%) translateY(-60px)',
+      'background:var(--surface2)', 'border:1px solid var(--border)',
+      'border-radius:50%', 'width:44px', 'height:44px',
+      'display:flex', 'align-items:center', 'justify-content:center',
+      'font-size:20px', 'z-index:9999',
+      'transition:transform 0.15s ease, opacity 0.15s ease',
+      'box-shadow:0 2px 12px rgba(0,0,0,0.25)', 'opacity:0'
+    ].join(';');
+    el.textContent = '↓';
+    document.body.appendChild(el);
+    return el;
+  }
+
+  document.addEventListener('touchstart', function(e) {
+    if (window.scrollY === 0) {
+      startY = e.touches[0].clientY;
+      pulling = true;
+      if (!indicator) indicator = createIndicator();
+    }
+  }, { passive: true });
+
+  document.addEventListener('touchmove', function(e) {
+    if (!pulling) return;
+    const dy = e.touches[0].clientY - startY;
+    if (dy <= 0) { pulling = false; return; }
+    const progress = Math.min(dy / THRESHOLD, 1);
+    const translateY = Math.min(dy * 0.4, THRESHOLD * 0.4);
+    indicator.style.transform = `translateX(-50%) translateY(${translateY - 30}px) rotate(${progress * 180}deg)`;
+    indicator.style.opacity = progress;
+    indicator.textContent = progress >= 1 ? '↑' : '↓';
+  }, { passive: true });
+
+  document.addEventListener('touchend', function(e) {
+    if (!pulling) return;
+    pulling = false;
+    const dy = e.changedTouches[0].clientY - startY;
+    if (dy >= THRESHOLD) {
+      indicator.textContent = '⟳';
+      indicator.style.transform = 'translateX(-50%) translateY(8px)';
+      indicator.style.transition = 'none';
+      // 스핀 애니메이션
+      indicator.animate([
+        { transform: 'translateX(-50%) translateY(8px) rotate(0deg)' },
+        { transform: 'translateX(-50%) translateY(8px) rotate(360deg)' }
+      ], { duration: 600, iterations: Infinity });
+      setTimeout(() => {
+        if (typeof fetchAll === 'function') fetchAll();
+        else location.reload();
+        setTimeout(() => {
+          if (indicator) {
+            indicator.style.transition = 'transform 0.3s ease, opacity 0.3s ease';
+            indicator.style.transform = 'translateX(-50%) translateY(-60px)';
+            indicator.style.opacity = '0';
+          }
+        }, 1000);
+      }, 300);
+    } else {
+      indicator.style.transition = 'transform 0.25s ease, opacity 0.25s ease';
+      indicator.style.transform = 'translateX(-50%) translateY(-60px)';
+      indicator.style.opacity = '0';
+    }
+  }, { passive: true });
+})();
+</script>
+
 </body>
 </html>
