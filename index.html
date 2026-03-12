@@ -386,15 +386,20 @@
   .plan-action-row:last-child { border-bottom: none; }
 
   /* Fear&Greed */
+  .fg-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-bottom: 20px;
+  }
   .fg-meter {
     display: flex;
     align-items: center;
-    gap: 14px;
+    gap: 12px;
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: 12px;
-    padding: 16px 20px;
-    margin-bottom: 20px;
+    padding: 14px 16px;
   }
   .fg-score {
     font-size: 42px;
@@ -581,6 +586,14 @@
     .tabs::-webkit-scrollbar { display: none; }
     .tab { padding: 6px 12px; font-size: 12px; white-space: nowrap; flex-shrink: 0; }
 
+    /* F&G 3종: 모바일에서 1열 */
+    .fg-grid {
+      grid-template-columns: 1fr !important;
+      gap: 8px !important;
+    }
+    .fg-meter { padding: 12px 14px !important; gap: 10px !important; }
+    .fg-score { font-size: 32px !important; }
+
     /* VIX/환율/PCR 카드: 모바일에서 1열 */
     .vix-fx-grid {
       grid-template-columns: 1fr !important;
@@ -669,23 +682,66 @@
 <!-- 대시보드 -->
 <div id="page-dashboard" class="page active">
   <div class="container">
-    <!-- Fear & Greed -->
-    <div class="fg-meter" id="fgMeter">
-      <div>
-        <div class="card-label">Fear & Greed Index</div>
-        <div class="fg-score" id="fgScore">-</div>
-      </div>
-      <div class="fg-bar-wrap">
-        <div class="flex-between">
-          <span style="color:var(--red);font-size:11px;">극단적 공포</span>
-          <div class="fg-label" id="fgLabel">-</div>
-          <span style="color:var(--green);font-size:11px;">극단적 탐욕</span>
+    <!-- Fear & Greed 3종 -->
+    <div class="fg-grid">
+
+      <!-- 미국 F&G -->
+      <div class="fg-meter">
+        <div>
+          <div class="card-label" style="white-space:nowrap">🇺🇸 미국</div>
+          <div class="fg-score" id="fgScore">-</div>
         </div>
-        <div class="fg-bar-bg">
-          <div class="fg-needle" id="fgNeedle" style="left:50%"></div>
+        <div class="fg-bar-wrap">
+          <div class="flex-between">
+            <span style="color:var(--red);font-size:10px;">공포</span>
+            <div class="fg-label" id="fgLabel">-</div>
+            <span style="color:var(--green);font-size:10px;">탐욕</span>
+          </div>
+          <div class="fg-bar-bg">
+            <div class="fg-needle" id="fgNeedle" style="left:50%"></div>
+          </div>
+          <div class="fg-desc" style="margin-top:8px;">CNN Fear & Greed</div>
         </div>
-        <div class="fg-desc" id="fgDesc" style="margin-top:10px;">CNN Fear & Greed Index 실시간</div>
       </div>
+
+      <!-- 한국 F&G (KOSPI 기반 계산) -->
+      <div class="fg-meter">
+        <div>
+          <div class="card-label" style="white-space:nowrap">🇰🇷 한국</div>
+          <div class="fg-score" id="fgKrScore">-</div>
+        </div>
+        <div class="fg-bar-wrap">
+          <div class="flex-between">
+            <span style="color:var(--red);font-size:10px;">공포</span>
+            <div class="fg-label" id="fgKrLabel">-</div>
+            <span style="color:var(--green);font-size:10px;">탐욕</span>
+          </div>
+          <div class="fg-bar-bg">
+            <div class="fg-needle" id="fgKrNeedle" style="left:50%"></div>
+          </div>
+          <div class="fg-desc" id="fgKrDesc" style="margin-top:8px;">KOSPI 기반 추정</div>
+        </div>
+      </div>
+
+      <!-- 코인 F&G -->
+      <div class="fg-meter">
+        <div>
+          <div class="card-label" style="white-space:nowrap">🪙 코인</div>
+          <div class="fg-score" id="fgCoinScore">-</div>
+        </div>
+        <div class="fg-bar-wrap">
+          <div class="flex-between">
+            <span style="color:var(--red);font-size:10px;">공포</span>
+            <div class="fg-label" id="fgCoinLabel">-</div>
+            <span style="color:var(--green);font-size:10px;">탐욕</span>
+          </div>
+          <div class="fg-bar-bg">
+            <div class="fg-needle" id="fgCoinNeedle" style="left:50%"></div>
+          </div>
+          <div class="fg-desc" style="margin-top:8px;">Alternative.me</div>
+        </div>
+      </div>
+
     </div>
 
     <!-- VIX + 환율 패널 -->
@@ -1177,6 +1233,8 @@ let state = {
   stockBalanceAt: null,  // 마지막 업데이트 일시
   upbitBalanceAt: null,
   fearGreed: 8,
+  coinFearGreed: null,
+  koreanFearGreed: null,
   fxRate: 1450,
   stocks: [],
   prices: {},
@@ -1351,23 +1409,36 @@ async function resetData() {
 let _bestProxyIdx = 0;
 
 async function fetchViaProxy(url, timeout = 6000) {
+  // 프록시 목록: allorigins 우선 (안정적), codetabs 백업, 직접 시도도 유지
+  // corsproxy.io는 Yahoo Finance 403 차단으로 제외
   const proxies = [
-    u => u,
-    u => `https://corsproxy.io/?${encodeURIComponent(u)}`,
-    u => `https://api.allorigins.win/get?url=${encodeURIComponent(u)}`,
-    u => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`,
+    // allorigins: contents 문자열로 감싸서 반환
+    { fn: u => `https://api.allorigins.win/get?url=${encodeURIComponent(u)}`,
+      parse: raw => raw?.contents ? JSON.parse(raw.contents) : null },
+    // codetabs: 직접 JSON 반환
+    { fn: u => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`,
+      parse: raw => raw },
+    // corsproxy.io 대안: cors.eu.org
+    { fn: u => `https://corsproxy.org/?${encodeURIComponent(u)}`,
+      parse: raw => raw?.contents ? JSON.parse(raw.contents) : raw },
+    // 직접 요청 (CORS 허용 API용)
+    { fn: u => u,
+      parse: raw => raw },
   ];
-  // 마지막 성공 프록시부터 시도
+
+  // 마지막 성공 프록시 캐시
   const order = [...Array(proxies.length).keys()];
-  if (_bestProxyIdx > 0) {
+  if (_bestProxyIdx > 0 && _bestProxyIdx < proxies.length) {
     order.splice(order.indexOf(_bestProxyIdx), 1);
     order.unshift(_bestProxyIdx);
   }
+
   for (const i of order) {
     try {
-      const res = await fetch(proxies[i](url), { signal: AbortSignal.timeout(timeout) });
+      const res = await fetch(proxies[i].fn(url), { signal: AbortSignal.timeout(timeout) });
+      if (!res.ok) continue; // 4xx/5xx 즉시 다음 프록시
       const raw = await res.json();
-      const result = raw?.contents ? JSON.parse(raw.contents) : raw;
+      const result = proxies[i].parse(raw);
       if (result) { _bestProxyIdx = i; return result; }
     } catch(e) {}
   }
@@ -1456,9 +1527,14 @@ async function fetchPrices() {
   }
 
   await Promise.allSettled(yahooTickers.map(async (ticker) => {
-    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}?interval=1d&range=1d`;
-    const data = await fetchViaProxy(url, 8000);
-    const meta = data?.chart?.result?.[0]?.meta;
+    // query1 시도 후 실패 시 query2 폴백
+    let meta = null;
+    for (const host of ['query1', 'query2']) {
+      const url = `https://${host}.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}?interval=1d&range=1d`;
+      const data = await fetchViaProxy(url, 8000);
+      meta = data?.chart?.result?.[0]?.meta;
+      if (meta?.regularMarketPrice || meta?.previousClose) break;
+    }
     if (meta) {
       results[ticker] = {
         price: meta.regularMarketPrice || meta.previousClose,
@@ -1484,6 +1560,88 @@ async function fetchFearGreed() {
   return null;
 }
 
+// 코인 Fear & Greed (Alternative.me)
+async function fetchCoinFearGreed() {
+  try {
+    const res = await fetch('https://api.alternative.me/fng/?limit=1', {
+      signal: AbortSignal.timeout(6000)
+    });
+    const data = await res.json();
+    const item = data?.data?.[0];
+    if (item?.value !== undefined) {
+      return {
+        score: parseInt(item.value),
+        label: item.value_classification
+      };
+    }
+  } catch(e) {}
+  return null;
+}
+
+// 한국 Fear & Greed (KOSPI 기반 추정)
+// 4개 요소 평균: 52주위치(30%) + RSI(30%) + 200일이평대비(25%) + 환율반전(15%)
+async function fetchKoreanFearGreed() {
+  try {
+    // KOSPI 200일치 데이터 요청
+    let data = null;
+    for (const host of ['query1','query2']) {
+      const url = `https://${host}.finance.yahoo.com/v8/finance/chart/%5EKS11?interval=1d&range=1y`;
+      data = await fetchViaProxy(url, 8000);
+      if (data?.chart?.result?.[0]?.indicators?.quote?.[0]?.close?.filter(v=>v).length > 10) break;
+    }
+    const result = data?.chart?.result?.[0];
+    if (!result) return null;
+
+    const closes = result.indicators?.quote?.[0]?.close?.filter(v => v != null) || [];
+    if (closes.length < 20) return null;
+
+    const current = closes[closes.length - 1];
+
+    // ① 52주 위치 (0~100)
+    const w52 = closes.slice(-252);
+    const lo = Math.min(...w52), hi = Math.max(...w52);
+    const pos52 = hi > lo ? (current - lo) / (hi - lo) * 100 : 50;
+
+    // ② RSI 14일 (과매도=공포, 과매수=탐욕)
+    const rsiPeriod = 14;
+    const rsiCloses = closes.slice(-rsiPeriod - 1);
+    let gains = 0, losses = 0;
+    for (let i = 1; i < rsiCloses.length; i++) {
+      const d = rsiCloses[i] - rsiCloses[i-1];
+      if (d > 0) gains += d; else losses -= d;
+    }
+    const avgGain = gains / rsiPeriod;
+    const avgLoss = losses / rsiPeriod;
+    const rsi = avgLoss === 0 ? 100 : 100 - (100 / (1 + avgGain / avgLoss));
+
+    // ③ 200일 이평 대비 위치
+    const ma200arr = closes.slice(-200);
+    const ma200 = ma200arr.reduce((a,b) => a+b, 0) / ma200arr.length;
+    // 현재가가 MA200 대비 몇 % → -10%~+10% 범위를 0~100 매핑
+    const maDiff = (current - ma200) / ma200 * 100;
+    const maScore = Math.max(0, Math.min(100, 50 + maDiff * 5));
+
+    // ④ 환율 역방향 (낮을수록 탐욕, 높을수록 공포)
+    // 1200=탐욕(80), 1300=중립(50), 1450=공포(20)
+    const fx = state.fxRate || 1300;
+    const fxScore = Math.max(0, Math.min(100, 110 - (fx - 1100) / 4));
+
+    // 가중 평균
+    const score = Math.round(pos52 * 0.30 + rsi * 0.30 + maScore * 0.25 + fxScore * 0.15);
+    return {
+      score: Math.max(0, Math.min(100, score)),
+      components: {
+        pos52: Math.round(pos52),
+        rsi: Math.round(rsi),
+        maScore: Math.round(maScore),
+        fxScore: Math.round(fxScore)
+      }
+    };
+  } catch(e) {
+    return null;
+  }
+}
+
 async function fetchVIX() {
   const url = 'https://query1.finance.yahoo.com/v8/finance/chart/%5EVIX?interval=1wk&range=1y';
   const data = await fetchViaProxy(url, 6000);
@@ -1502,8 +1660,12 @@ async function fetchVIX() {
 }
 
 async function fetchFX() {
-  const url = 'https://query1.finance.yahoo.com/v8/finance/chart/USDKRW%3DX?interval=1wk&range=1y';
-  const data = await fetchViaProxy(url, 6000);
+  let data = null;
+  for (const host of ['query1','query2']) {
+    const url = `https://${host}.finance.yahoo.com/v8/finance/chart/USDKRW%3DX?interval=1wk&range=1y`;
+    data = await fetchViaProxy(url, 6000);
+    if (data?.chart?.result?.[0]?.meta?.regularMarketPrice) break;
+  }
   const meta = data?.chart?.result?.[0]?.meta;
   const quotes = data?.chart?.result?.[0]?.indicators?.quote?.[0];
   if (meta?.regularMarketPrice) {
@@ -1561,7 +1723,10 @@ async function refreshAll() {
   icon.innerHTML = '<span class="spinner"></span>';
 
   try {
-    const [prices, fx, fg, vix, pcr] = await Promise.all([fetchPrices(), fetchFX(), fetchFearGreed(), fetchVIX(), fetchPCR()]);
+    const [prices, fx, fg, vix, pcr, coinFg, krFg] = await Promise.all([
+      fetchPrices(), fetchFX(), fetchFearGreed(), fetchVIX(), fetchPCR(),
+      fetchCoinFearGreed(), fetchKoreanFearGreed()
+    ]);
 
     // 신규 가격만 업데이트 (기존 정상 가격 보존)
     if (prices && typeof prices === 'object') {
@@ -1571,6 +1736,8 @@ async function refreshAll() {
     if (fg !== null) state.fearGreed = fg;
     if (vix) state.vix = vix;
     if (pcr) state.pcr = pcr;
+    if (coinFg) state.coinFearGreed = coinFg;
+    if (krFg) state.koreanFearGreed = krFg;
 
     state.lastUpdate = new Date();
     document.getElementById('lastUpdate').textContent =
@@ -2835,21 +3002,56 @@ function renderPlan(planData, extra) {
   container.innerHTML = html;
 }
 
+function _fgColor(v) {
+  if (v <= 25) return 'var(--red)';
+  if (v <= 45) return '#ff8c69';
+  if (v <= 55) return 'var(--yellow)';
+  if (v <= 75) return '#69ff8c';
+  return 'var(--green)';
+}
+function _fgLabel(v) {
+  if (v <= 25) return '극단적 공포';
+  if (v <= 45) return '공포';
+  if (v <= 55) return '중립';
+  if (v <= 75) return '탐욕';
+  return '극단적 탐욕';
+}
+function _applyFgMeter(scoreId, needleId, labelId, value) {
+  const el = document.getElementById(scoreId);
+  const needle = document.getElementById(needleId);
+  const labelEl = document.getElementById(labelId);
+  if (!el || !needle || !labelEl) return;
+  const color = _fgColor(value);
+  el.textContent = value;
+  el.style.color = color;
+  needle.style.left = value + '%';
+  labelEl.textContent = _fgLabel(value);
+  labelEl.style.color = color;
+}
+
 function updateFGMeter() {
-  const fg = state.fearGreed;
-  document.getElementById('fgScore').textContent = fg;
-  document.getElementById('fgNeedle').style.left = fg + '%';
+  // 미국 F&G
+  if (state.fearGreed != null) {
+    _applyFgMeter('fgScore', 'fgNeedle', 'fgLabel', state.fearGreed);
+  }
 
-  let label, color;
-  if (fg <= 25) { label = '극단적 공포'; color = 'var(--red)'; }
-  else if (fg <= 45) { label = '공포'; color = '#ff8c69'; }
-  else if (fg <= 55) { label = '중립'; color = 'var(--yellow)'; }
-  else if (fg <= 75) { label = '탐욕'; color = '#69ff8c'; }
-  else { label = '극단적 탐욕'; color = 'var(--green)'; }
+  // 코인 F&G
+  const coin = state.coinFearGreed;
+  if (coin?.score != null) {
+    _applyFgMeter('fgCoinScore', 'fgCoinNeedle', 'fgCoinLabel', coin.score);
+  }
 
-  document.getElementById('fgLabel').textContent = label;
-  document.getElementById('fgLabel').style.color = color;
-  document.getElementById('fgScore').style.color = color;
+  // 한국 F&G
+  const kr = state.koreanFearGreed;
+  if (kr?.score != null) {
+    _applyFgMeter('fgKrScore', 'fgKrNeedle', 'fgKrLabel', kr.score);
+    // 세부 지표 툴팁 업데이트
+    const desc = document.getElementById('fgKrDesc');
+    if (desc && kr.components) {
+      const c = kr.components;
+      desc.title = `52주위치: ${c.pos52} · RSI: ${c.rsi} · MA200: ${c.maScore} · 환율: ${c.fxScore}`;
+    }
+  }
 }
 
 // ===== 유틸 =====
