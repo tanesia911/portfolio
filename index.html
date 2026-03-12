@@ -826,7 +826,7 @@
           <div style="font-size:11px;color:var(--text3)">%p</div>
         </div>
         <div style="font-size:10px;color:var(--text3);line-height:1.5">
-          10년물 <span id="yield10y" style="color:var(--text)">-</span>% · 2년물 <span id="yield2y" style="color:var(--text)">-</span>%<br>
+          10년물 <span id="yield10y" style="color:var(--text)">-</span>% · <span id="yield2yLabel">3개월물</span> <span id="yield2y" style="color:var(--text)">-</span>%<br>
           <span id="yieldDesc" style="color:var(--text2)">-</span>
         </div>
         <div style="height:4px;background:var(--border);border-radius:2px;overflow:hidden">
@@ -1742,14 +1742,16 @@ async function fetchKoreanFearGreed() {
 // ══════════════════════════════════════════════════════════
 async function fetchYieldSpread() {
   try {
-    const [d10, d2] = await Promise.all([
-      fetchViaProxy('https://query1.finance.yahoo.com/v8/finance/chart/%5ETNX?interval=1d&range=5d', 8000),
-      fetchViaProxy('https://query1.finance.yahoo.com/v8/finance/chart/%5ETWO?interval=1d&range=5d', 8000)
+    // ^TNX = 10년물, ^IRX = 3개월물 (^TWO 는 Yahoo에서 미지원)
+    // 10년-3개월 스프레드 = 뉴욕 연방준비은행이 경기침체 예측에 사용하는 방식
+    const [d10, d3m] = await Promise.all([
+      fetchViaProxy('https://query1.finance.yahoo.com/v8/finance/chart/%5ETNX?interval=1d&range=5d', 10000),
+      fetchViaProxy('https://query1.finance.yahoo.com/v8/finance/chart/%5EIRX?interval=1d&range=5d', 10000)
     ]);
     const y10 = d10?.chart?.result?.[0]?.meta?.regularMarketPrice;
-    const y2  = d2?.chart?.result?.[0]?.meta?.regularMarketPrice;
-    if (!y10 || !y2) return null;
-    return { y10, y2, spread: parseFloat((y10 - y2).toFixed(3)) };
+    const y3m = d3m?.chart?.result?.[0]?.meta?.regularMarketPrice;
+    if (!y10 || !y3m) return null;
+    return { y10, y2: y3m, label2: '3개월물', spread: parseFloat((y10 - y3m).toFixed(3)) };
   } catch(e) { return null; }
 }
 
@@ -1759,7 +1761,7 @@ async function fetchYieldSpread() {
 async function fetchHYG() {
   try {
     const data = await fetchViaProxy(
-      'https://query1.finance.yahoo.com/v8/finance/chart/HYG?interval=1d&range=1y', 10000
+      'https://query1.finance.yahoo.com/v8/finance/chart/HYG?interval=1d&range=1y', 15000
     );
     const result = data?.chart?.result?.[0];
     if (!result) return null;
@@ -1781,7 +1783,7 @@ async function fetchHYG() {
 async function fetchSP500Trend() {
   try {
     const data = await fetchViaProxy(
-      'https://query1.finance.yahoo.com/v8/finance/chart/%5EGSPC?interval=1d&range=1y', 10000
+      'https://query1.finance.yahoo.com/v8/finance/chart/%5EGSPC?interval=1d&range=1y', 15000
     );
     const result = data?.chart?.result?.[0];
     if (!result) return null;
@@ -1918,6 +1920,8 @@ function renderSignalPanel() {
     if (spEl) spEl.textContent = (ys.spread >= 0 ? '+' : '') + ys.spread.toFixed(2);
     if (y10El) y10El.textContent = ys.y10.toFixed(2);
     if (y2El) y2El.textContent = ys.y2.toFixed(2);
+    const y2LabelEl = document.getElementById('yield2yLabel');
+    if (y2LabelEl && ys.label2) y2LabelEl.textContent = ys.label2;
     const isInverted = ys.spread < 0;
     const isRecovering = ys.spread >= 0 && ys.spread < 0.3;
     const desc = isInverted ? '🚨 역전 중 — 경기침체 선행 신호'
@@ -2232,10 +2236,11 @@ async function refreshAll() {
   icon.innerHTML = '<span class="spinner"></span>';
 
   try {
+    const safe = fn => fn.catch(() => null);
     const [prices, fx, fg, vix, pcr, coinFg, krFg, yieldData, hygData, spData] = await Promise.all([
-      fetchPrices(), fetchFX(), fetchFearGreed(), fetchVIX(), fetchPCR(),
-      fetchCoinFearGreed(), fetchKoreanFearGreed(),
-      fetchYieldSpread(), fetchHYG(), fetchSP500Trend()
+      safe(fetchPrices()), safe(fetchFX()), safe(fetchFearGreed()), safe(fetchVIX()), safe(fetchPCR()),
+      safe(fetchCoinFearGreed()), safe(fetchKoreanFearGreed()),
+      safe(fetchYieldSpread()), safe(fetchHYG()), safe(fetchSP500Trend())
     ]);
 
     // 신규 가격만 업데이트 (기존 정상 가격 보존)
