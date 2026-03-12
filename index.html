@@ -1582,12 +1582,15 @@ async function fetchCoinFearGreed() {
 // 4개 요소 평균: 52주위치(30%) + RSI(30%) + 200일이평대비(25%) + 환율반전(15%)
 async function fetchKoreanFearGreed() {
   try {
-    // KOSPI 200일치 데이터 요청
+    // range=1y는 allorigins 응답 크기 초과로 실패 → period1/period2 방식으로 최근 250일 요청
+    const now = Math.floor(Date.now() / 1000);
+    const p1 = now - 250 * 24 * 3600;
     let data = null;
-    for (const host of ['query1','query2']) {
-      const url = `https://${host}.finance.yahoo.com/v8/finance/chart/%5EKS11?interval=1d&range=1y`;
-      data = await fetchViaProxy(url, 8000);
-      if (data?.chart?.result?.[0]?.indicators?.quote?.[0]?.close?.filter(v=>v).length > 10) break;
+    for (const host of ['query1', 'query2']) {
+      const url = `https://${host}.finance.yahoo.com/v8/finance/chart/%5EKS11?interval=1d&period1=${p1}&period2=${now}`;
+      data = await fetchViaProxy(url, 12000);
+      const closes = data?.chart?.result?.[0]?.indicators?.quote?.[0]?.close?.filter(v => v != null) || [];
+      if (closes.length > 10) break;
     }
     const result = data?.chart?.result?.[0];
     if (!result) return null;
@@ -1597,36 +1600,33 @@ async function fetchKoreanFearGreed() {
 
     const current = closes[closes.length - 1];
 
-    // ① 52주 위치 (0~100)
-    const w52 = closes.slice(-252);
-    const lo = Math.min(...w52), hi = Math.max(...w52);
+    // ① 52주(약 250거래일) 위치 (0~100)
+    const lo = Math.min(...closes), hi = Math.max(...closes);
     const pos52 = hi > lo ? (current - lo) / (hi - lo) * 100 : 50;
 
-    // ② RSI 14일 (과매도=공포, 과매수=탐욕)
+    // ② RSI 14일
     const rsiPeriod = 14;
     const rsiCloses = closes.slice(-rsiPeriod - 1);
     let gains = 0, losses = 0;
     for (let i = 1; i < rsiCloses.length; i++) {
-      const d = rsiCloses[i] - rsiCloses[i-1];
+      const d = rsiCloses[i] - rsiCloses[i - 1];
       if (d > 0) gains += d; else losses -= d;
     }
     const avgGain = gains / rsiPeriod;
     const avgLoss = losses / rsiPeriod;
     const rsi = avgLoss === 0 ? 100 : 100 - (100 / (1 + avgGain / avgLoss));
 
-    // ③ 200일 이평 대비 위치
-    const ma200arr = closes.slice(-200);
-    const ma200 = ma200arr.reduce((a,b) => a+b, 0) / ma200arr.length;
-    // 현재가가 MA200 대비 몇 % → -10%~+10% 범위를 0~100 매핑
-    const maDiff = (current - ma200) / ma200 * 100;
+    // ③ 125일 이평 대비 위치 (데이터가 250일치라 200일 대신 125일 사용)
+    const maLen = Math.min(125, closes.length - 1);
+    const maArr = closes.slice(-maLen);
+    const ma = maArr.reduce((a, b) => a + b, 0) / maArr.length;
+    const maDiff = (current - ma) / ma * 100;
     const maScore = Math.max(0, Math.min(100, 50 + maDiff * 5));
 
-    // ④ 환율 역방향 (낮을수록 탐욕, 높을수록 공포)
-    // 1200=탐욕(80), 1300=중립(50), 1450=공포(20)
-    const fx = state.fxRate || 1300;
+    // ④ 환율 역방향 (1200=탐욕 80pt, 1350=중립 50pt, 1500=공포 20pt)
+    const fx = state.fxRate || 1350;
     const fxScore = Math.max(0, Math.min(100, 110 - (fx - 1100) / 4));
 
-    // 가중 평균
     const score = Math.round(pos52 * 0.30 + rsi * 0.30 + maScore * 0.25 + fxScore * 0.15);
     return {
       score: Math.max(0, Math.min(100, score)),
