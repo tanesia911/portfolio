@@ -1545,18 +1545,16 @@ async function resetData() {
 // _bestProxyIdx deprecated (Race 방식으로 교체)
 
 async function fetchViaProxy(url, timeout = 8000) {
-  // 전략: 여러 프록시에 동시 요청 → 가장 먼저 성공한 결과 사용 (Race)
-  // 직접 요청(CORS 허용 API용)도 포함
+  // 전략: allorigins/raw(직접 JSON) → allorigins/get(contents래핑) → 직접요청 → codetabs(fallback)
   const PROXY_LIST = [
-    // allorigins: {contents: "..."} 형태로 반환
+    // allorigins raw: JSON 그대로 반환 (Yahoo Finance 등에 적합)
+    u => ({ url: `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`, parse: r => r }),
+    // allorigins get: {contents:"..."} 래핑
     u => ({ url: `https://api.allorigins.win/get?url=${encodeURIComponent(u)}`, parse: r => r?.contents ? JSON.parse(r.contents) : null }),
-    // corsproxy.org: allorigins와 동일 포맷
-    u => ({ url: `https://corsproxy.org/?${encodeURIComponent(u)}`, parse: r => r?.contents ? JSON.parse(r.contents) : r }),
     // 직접 요청 (upbit, alternative.me 등 CORS 허용 API)
     u => ({ url: u, parse: r => r }),
   ];
 
-  // 각 프록시를 개별 Promise로 → 성공한 것 먼저 resolve
   const tryProxy = async (proxyFn) => {
     try {
       const { url: proxyUrl, parse } = proxyFn(url);
@@ -1566,16 +1564,14 @@ async function fetchViaProxy(url, timeout = 8000) {
       const result = parse(raw);
       if (!result) throw new Error('empty');
       return result;
-    } catch(e) {
-      throw e;
-    }
+    } catch(e) { throw e; }
   };
 
   // Promise.any: 하나라도 성공하면 즉시 반환
   try {
     return await Promise.any(PROXY_LIST.map(p => tryProxy(p)));
   } catch(e) {
-    // 모두 실패 → codetabs 마지막 시도 (느리지만 안정적)
+    // 모두 실패 → codetabs 마지막 시도
     try {
       const res = await fetch(`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
         { signal: AbortSignal.timeout(timeout + 4000) });
@@ -1786,19 +1782,24 @@ async function fetchKoreanFearGreed() {
 // 장단기 금리차 (10년 - 2년 국채)
 // ══════════════════════════════════════════════════════════
 async function fetchYieldSpread() {
-  // Yahoo Finance 티커 전용 직접 fetch (query1 → query2 → codetabs 순)
+  // allorigins/raw 우선, query1/query2 둘 다 시도
   async function fetchYahoo(ticker) {
-    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=1y`;
-    const url2 = `https://query2.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=1y`;
-    for (const u of [url, url2]) {
-      for (const proxy of [
-        `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`,
-        `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
-      ]) {
+    const bases = [
+      `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=1y`,
+      `https://query2.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=1y`,
+    ];
+    for (const base of bases) {
+      const proxies = [
+        `https://api.allorigins.win/raw?url=${encodeURIComponent(base)}`,
+        `https://api.allorigins.win/get?url=${encodeURIComponent(base)}`,
+        `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(base)}`,
+      ];
+      for (const proxy of proxies) {
         try {
           const r = await fetch(proxy, { signal: AbortSignal.timeout(10000) });
           if (!r.ok) continue;
-          const d = await r.json();
+          const raw = await r.json();
+          const d = raw?.contents ? JSON.parse(raw.contents) : raw;
           const price = d?.chart?.result?.[0]?.meta?.regularMarketPrice;
           if (price) return price;
         } catch(e) {}
@@ -1844,40 +1845,41 @@ async function fetchHYG() {
 // S&P500 + 200일 이동평균
 // ══════════════════════════════════════════════════════════
 async function fetchSP500Trend() {
-  // SP500은 1년치 close 배열이 필요하므로 직접 순회
+  // allorigins/raw 우선, close 배열 필요하므로 파싱까지 검증
   const ticker = '%5EGSPC';
-  const urls = [
+  const bases = [
     `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=1y`,
     `https://query2.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=1y`,
   ];
-  let data = null;
-  for (const u of urls) {
-    for (const proxy of [
-      `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`,
-      `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
-    ]) {
+  let result = null;
+  outer: for (const base of bases) {
+    const proxies = [
+      `https://api.allorigins.win/raw?url=${encodeURIComponent(base)}`,
+      `https://api.allorigins.win/get?url=${encodeURIComponent(base)}`,
+      `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(base)}`,
+    ];
+    for (const proxy of proxies) {
       try {
         const r = await fetch(proxy, { signal: AbortSignal.timeout(15000) });
         if (!r.ok) continue;
-        const d = await r.json();
+        const raw = await r.json();
+        const d = raw?.contents ? JSON.parse(raw.contents) : raw;
         const closes = d?.chart?.result?.[0]?.indicators?.quote?.[0]?.close?.filter(v => v != null) || [];
-        if (closes.length >= 50) { data = d; break; }
+        if (closes.length >= 50) { result = d; break outer; }
       } catch(e) {}
-      if (data) break;
     }
-    if (data) break;
   }
-  if (!data) return null;
+  if (!result) return null;
   try {
-    const result = data.chart.result[0];
-    const meta = result.meta;
-    const closes = result.indicators?.quote?.[0]?.close?.filter(v => v != null) || [];
+    const res = result.chart.result[0];
+    const meta = res.meta;
+    const closes = res.indicators?.quote?.[0]?.close?.filter(v => v != null) || [];
     const price = meta.regularMarketPrice;
     const prevClose = meta.previousClose || meta.chartPreviousClose;
     const maData = closes.slice(-200);
     const ma200 = maData.reduce((a, b) => a + b, 0) / maData.length;
-    const vsMa = ((price - ma200) / ma200 * 100).toFixed(1);
-    return { price, prevClose, ma200: parseFloat(ma200.toFixed(2)), vsMa: parseFloat(vsMa) };
+    const vsMa = parseFloat(((price - ma200) / ma200 * 100).toFixed(1));
+    return { price, prevClose, ma200: parseFloat(ma200.toFixed(2)), vsMa };
   } catch(e) { return null; }
 }
 
