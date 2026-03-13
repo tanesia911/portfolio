@@ -1778,17 +1778,32 @@ async function fetchKoreanFearGreed() {
 // 장단기 금리차 (10년 - 2년 국채)
 // ══════════════════════════════════════════════════════════
 async function fetchYieldSpread() {
+  // Yahoo Finance 티커 전용 직접 fetch (query1 → query2 → codetabs 순)
+  async function fetchYahoo(ticker) {
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=1y`;
+    const url2 = `https://query2.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=1y`;
+    for (const u of [url, url2]) {
+      for (const proxy of [
+        `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`,
+        `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
+      ]) {
+        try {
+          const r = await fetch(proxy, { signal: AbortSignal.timeout(10000) });
+          if (!r.ok) continue;
+          const d = await r.json();
+          const price = d?.chart?.result?.[0]?.meta?.regularMarketPrice;
+          if (price) return price;
+        } catch(e) {}
+      }
+    }
+    return null;
+  }
   try {
-    // ^TNX = 10년물, ^IRX = 3개월물 (^TWO 는 Yahoo에서 미지원)
-    // 10년-3개월 스프레드 = 뉴욕 연방준비은행이 경기침체 예측에 사용하는 방식
-    const [d10, d3m] = await Promise.all([
-      fetchViaProxy('https://query1.finance.yahoo.com/v8/finance/chart/%5ETNX?interval=1d&range=5d', 10000),
-      fetchViaProxy('https://query1.finance.yahoo.com/v8/finance/chart/%5EIRX?interval=1d&range=1y', 10000)
+    const [y10, y3mRaw] = await Promise.all([
+      fetchYahoo('%5ETNX'),
+      fetchYahoo('%5EIRX')
     ]);
-    const y10 = d10?.chart?.result?.[0]?.meta?.regularMarketPrice;
-    const y3mRaw = d3m?.chart?.result?.[0]?.meta?.regularMarketPrice;
     if (!y10) return null;
-    // ^IRX 정상범위 0~20% 필터링
     const y3m = (y3mRaw && y3mRaw > 0 && y3mRaw < 20) ? y3mRaw : null;
     const spread = y3m != null ? parseFloat((y10 - y3m).toFixed(3)) : null;
     return { y10, y2: y3m, label2: '3개월물', spread };
@@ -1821,18 +1836,36 @@ async function fetchHYG() {
 // S&P500 + 200일 이동평균
 // ══════════════════════════════════════════════════════════
 async function fetchSP500Trend() {
+  // SP500은 1년치 close 배열이 필요하므로 직접 순회
+  const ticker = '%5EGSPC';
+  const urls = [
+    `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=1y`,
+    `https://query2.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=1y`,
+  ];
+  let data = null;
+  for (const u of urls) {
+    for (const proxy of [
+      `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`,
+      `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
+    ]) {
+      try {
+        const r = await fetch(proxy, { signal: AbortSignal.timeout(15000) });
+        if (!r.ok) continue;
+        const d = await r.json();
+        const closes = d?.chart?.result?.[0]?.indicators?.quote?.[0]?.close?.filter(v => v != null) || [];
+        if (closes.length >= 50) { data = d; break; }
+      } catch(e) {}
+      if (data) break;
+    }
+    if (data) break;
+  }
+  if (!data) return null;
   try {
-    const data = await fetchViaProxy(
-      'https://query1.finance.yahoo.com/v8/finance/chart/%5EGSPC?interval=1d&range=1y', 15000
-    );
-    const result = data?.chart?.result?.[0];
-    if (!result) return null;
+    const result = data.chart.result[0];
     const meta = result.meta;
     const closes = result.indicators?.quote?.[0]?.close?.filter(v => v != null) || [];
-    if (closes.length < 50) return null;
     const price = meta.regularMarketPrice;
     const prevClose = meta.previousClose || meta.chartPreviousClose;
-    // 200일 MA (데이터가 200개 미만이면 있는 것만 평균)
     const maData = closes.slice(-200);
     const ma200 = maData.reduce((a, b) => a + b, 0) / maData.length;
     const vsMa = ((price - ma200) / ma200 * 100).toFixed(1);
