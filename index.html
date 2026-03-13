@@ -641,6 +641,15 @@
   @media (max-width: 480px) {
     #signalPanel { grid-template-columns: 1fr !important; }
   }
+
+  /* 지표 업데이트 시간 뱃지 */
+  .ts-badge {
+    font-size: 9px;
+    color: var(--text3);
+    font-weight: 400;
+    margin-left: 6px;
+    opacity: 0.8;
+  }
 </style>
 </head>
 <body>
@@ -797,13 +806,54 @@
 <!-- 투자지표 -->
 <div id="page-indicators" class="page">
   <div class="container">
+    <!-- 종합 매매신호 (최상단) -->
+    <div style="margin-bottom:16px">
+      <div class="summary-card" style="display:flex;flex-direction:column;gap:10px;border:2px solid var(--border);position:relative;overflow:hidden">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+          <div style="display:flex;align-items:center;gap:10px">
+            <div class="card-label" style="margin-bottom:0">🎯 종합 매매신호</div>
+            <div id="masterConfidence" style="font-size:9px;font-weight:700;padding:2px 6px;border-radius:8px;background:var(--surface2);color:var(--text3)">-</div>
+          </div>
+          <div id="masterSignal" style="font-size:26px;font-weight:900;letter-spacing:-0.5px">-</div>
+        </div>
+        <div id="masterReason" style="font-size:11px;color:var(--text2);line-height:1.6">분석 중...</div>
+        <!-- 3축 게이지 가로 배치 -->
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+          <div style="display:flex;flex-direction:column;gap:4px">
+            <div style="font-size:9px;color:var(--text3)">😱 심리 공포도</div>
+            <div style="height:6px;background:var(--border);border-radius:3px;overflow:hidden">
+              <div id="fearBar" style="height:100%;border-radius:3px;transition:width 0.5s,background 0.5s;width:50%;background:var(--yellow)"></div>
+            </div>
+            <div id="fearLabel" style="font-size:10px;font-weight:700;color:var(--text2)">-</div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:4px">
+            <div style="font-size:9px;color:var(--text3)">🏗 구조 안전도</div>
+            <div style="height:6px;background:var(--border);border-radius:3px;overflow:hidden">
+              <div id="safeBar" style="height:100%;border-radius:3px;transition:width 0.5s,background 0.5s;width:50%;background:var(--yellow)"></div>
+            </div>
+            <div id="safeLabel" style="font-size:10px;font-weight:700;color:var(--text2)">-</div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:4px">
+            <div style="font-size:9px;color:var(--text3)">📈 추세 국면</div>
+            <div style="height:6px;background:var(--border);border-radius:3px;overflow:hidden">
+              <div id="trendBar" style="height:100%;border-radius:3px;transition:width 0.5s,background 0.5s;width:50%;background:var(--yellow)"></div>
+            </div>
+            <div id="trendLabel" style="font-size:10px;font-weight:700;color:var(--text2)">-</div>
+          </div>
+        </div>
+        <div style="font-size:9px;color:var(--text3);border-top:1px solid var(--border);padding-top:6px">
+          공포도↑ = 역발상 매수기회 · 구조↑ = 지금 안전 · 추세 = 체제확인
+        </div>
+      </div>
+    </div>
+
     <!-- Fear & Greed 3종 -->
     <div class="fg-grid">
 
       <!-- 미국 F&G -->
       <div class="fg-meter">
         <div>
-          <div class="card-label" style="white-space:nowrap">🇺🇸 미국 F&G</div>
+          <div class="card-label" style="white-space:nowrap">🇺🇸 미국 F&G<span class="ts-badge" data-ts-key="fg"></span></div>
           <div class="fg-score" id="fgScore">-</div>
         </div>
         <div class="fg-bar-wrap">
@@ -825,7 +875,7 @@
       <!-- 코인 F&G -->
       <div class="fg-meter">
         <div>
-          <div class="card-label" style="white-space:nowrap">🪙 코인 F&G</div>
+          <div class="card-label" style="white-space:nowrap">🪙 코인 F&G<span class="ts-badge" data-ts-key="coinFg"></span></div>
           <div class="fg-score" id="fgCoinScore">-</div>
         </div>
         <div class="fg-bar-wrap">
@@ -848,7 +898,7 @@
     <div class="vix-fx-grid" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:20px">
       <div class="summary-card" style="display:flex;align-items:center;gap:16px">
         <div>
-          <div class="card-label">VIX 공포지수</div>
+          <div class="card-label">VIX 공포지수<span class="ts-badge" data-ts-key="vix"></span></div>
           <div class="card-value mono" id="vixScore" style="font-size:26px">-</div>
         </div>
         <div style="flex:1">
@@ -877,7 +927,7 @@
       </div>
       <div class="summary-card" style="display:flex;align-items:center;gap:16px">
         <div>
-          <div class="card-label">환율 USD/KRW</div>
+          <div class="card-label">환율 USD/KRW<span class="ts-badge" data-ts-key="fx"></span></div>
           <div class="card-value mono" id="fxScore" style="font-size:26px">-</div>
         </div>
         <div style="flex:1">
@@ -900,7 +950,7 @@
       </div>
       <div class="summary-card" style="display:flex;align-items:center;gap:16px">
         <div>
-          <div class="card-label">풋-콜 레이쇼</div>
+          <div class="card-label">풋-콜 레이쇼<span class="ts-badge" data-ts-key="pcr"></span></div>
           <div class="card-value mono" id="pcrScore" style="font-size:26px">-</div>
         </div>
         <div style="flex:1">
@@ -916,12 +966,12 @@
     </div>
 
     <!-- 매매신호 패널 -->
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px;margin-bottom:20px" id="signalPanel">
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:20px" id="signalPanel">
 
       <!-- 장단기 금리차 카드 -->
       <div class="summary-card" style="display:flex;flex-direction:column;gap:8px">
         <div style="display:flex;align-items:center;justify-content:space-between">
-          <div class="card-label">📐 장단기 금리차</div>
+          <div class="card-label">📐 장단기 금리차<span class="ts-badge" data-ts-key="yieldSpread"></span></div>
           <div id="yieldSignalBadge" style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;background:var(--surface2);color:var(--text2)">-</div>
         </div>
         <div style="display:flex;align-items:baseline;gap:8px">
@@ -941,7 +991,7 @@
       <!-- HYG 신용시장 카드 -->
       <div class="summary-card" style="display:flex;flex-direction:column;gap:8px">
         <div style="display:flex;align-items:center;justify-content:space-between">
-          <div class="card-label">🏦 신용시장 (HYG)</div>
+          <div class="card-label">🏦 신용시장 (HYG)<span class="ts-badge" data-ts-key="hygData"></span></div>
           <div id="hygSignalBadge" style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;background:var(--surface2);color:var(--text2)">-</div>
         </div>
         <div style="display:flex;align-items:baseline;gap:8px">
@@ -962,7 +1012,7 @@
       <!-- S&P500 추세 카드 -->
       <div class="summary-card" style="display:flex;flex-direction:column;gap:8px">
         <div style="display:flex;align-items:center;justify-content:space-between">
-          <div class="card-label">📈 S&P500 추세</div>
+          <div class="card-label">📈 S&P500 추세<span class="ts-badge" data-ts-key="spTrend"></span></div>
           <div id="spTrendBadge" style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;background:var(--surface2);color:var(--text2)">-</div>
         </div>
         <div style="display:flex;align-items:baseline;gap:8px">
@@ -977,49 +1027,6 @@
           <div id="spTrendBar" style="height:100%;border-radius:2px;transition:width 0.5s,background 0.5s;width:50%;background:var(--yellow)"></div>
         </div>
         <div style="font-size:10px;color:var(--text3);line-height:1.4">200일 MA 위 = 상승추세(매수신호 유효).<br>아래 = 하락추세(매수신호 억제)</div>
-      </div>
-
-      <!-- 종합 매매신호 카드 (3축 판정) -->
-      <div class="summary-card" style="display:flex;flex-direction:column;gap:8px;border:1px solid var(--border)">
-        <div class="card-label">🎯 종합 매매신호</div>
-        <!-- 최종 신호 -->
-        <div style="display:flex;align-items:center;justify-content:space-between">
-          <div id="masterSignal" style="font-size:20px;font-weight:900;letter-spacing:-0.5px">-</div>
-          <div id="masterConfidence" style="font-size:9px;font-weight:700;padding:2px 6px;border-radius:8px;background:var(--surface2);color:var(--text3)">-</div>
-        </div>
-        <!-- 판단 이유 -->
-        <div id="masterReason" style="font-size:10px;color:var(--text2);line-height:1.5;min-height:28px">분석 중...</div>
-        <!-- 3축 미니 게이지 -->
-        <div style="display:flex;flex-direction:column;gap:5px;margin-top:2px">
-          <!-- X축: 심리 공포도 -->
-          <div style="display:flex;align-items:center;gap:6px">
-            <div style="font-size:9px;color:var(--text3);width:44px;flex-shrink:0">😱 공포도</div>
-            <div style="flex:1;height:5px;background:var(--border);border-radius:3px;overflow:hidden">
-              <div id="fearBar" style="height:100%;border-radius:3px;transition:width 0.5s,background 0.5s;width:50%;background:var(--yellow)"></div>
-            </div>
-            <div id="fearLabel" style="font-size:9px;font-weight:700;width:28px;text-align:right;color:var(--text2)">-</div>
-          </div>
-          <!-- Y축: 구조 안전도 -->
-          <div style="display:flex;align-items:center;gap:6px">
-            <div style="font-size:9px;color:var(--text3);width:44px;flex-shrink:0">🏗 구조</div>
-            <div style="flex:1;height:5px;background:var(--border);border-radius:3px;overflow:hidden">
-              <div id="safeBar" style="height:100%;border-radius:3px;transition:width 0.5s,background 0.5s;width:50%;background:var(--yellow)"></div>
-            </div>
-            <div id="safeLabel" style="font-size:9px;font-weight:700;width:28px;text-align:right;color:var(--text2)">-</div>
-          </div>
-          <!-- Z축: 추세 국면 -->
-          <div style="display:flex;align-items:center;gap:6px">
-            <div style="font-size:9px;color:var(--text3);width:44px;flex-shrink:0">📈 추세</div>
-            <div style="flex:1;height:5px;background:var(--border);border-radius:3px;overflow:hidden">
-              <div id="trendBar" style="height:100%;border-radius:3px;transition:width 0.5s,background 0.5s;width:50%;background:var(--yellow)"></div>
-            </div>
-            <div id="trendLabel" style="font-size:9px;font-weight:700;width:28px;text-align:right;color:var(--text2)">-</div>
-          </div>
-        </div>
-        <!-- 축 설명 -->
-        <div style="font-size:9px;color:var(--text3);line-height:1.4;border-top:1px solid var(--border);padding-top:5px">
-          공포도↑ = 역발상 매수기회 · 구조↑ = 지금 안전 · 추세 = 체제확인
-        </div>
       </div>
 
     </div>
@@ -1364,6 +1371,7 @@ let state = {
   stocks: [],
   prices: {},
   lastUpdate: null,
+  indicatorTs: {}, // 지표별 업데이트 타임스탬프 { fg, coinFg, vix, pcr, fx, yieldSpread, hygData, spTrend }
   accounts: ['해외주식계좌', '국내주식계좌', '금계좌', '연금저축', 'IRP', '코인계좌'],
   accountWeights: { '해외주식계좌': 40, '국내주식계좌': 20, '금계좌': 10, '연금저축': 15, 'IRP': 10, '코인계좌': 5 },
   excludedAccounts: ['연금저축', 'IRP'],
@@ -1875,6 +1883,38 @@ async function fetchSP500Trend() {
 
 // ══════════════════════════════════════════════════════════
 // 종합 매매신호 계산
+// ══════════════════════════════════════════════════════════
+// 상대 시간 표시 유틸
+// ══════════════════════════════════════════════════════════
+function relativeTime(ts) {
+  if (!ts) return null;
+  const diff = Math.floor((Date.now() - ts) / 1000); // 초
+  if (diff < 60)  return '방금 전';
+  if (diff < 3600) return `${Math.floor(diff / 60)}분 전`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}시간 전`;
+  return `${Math.floor(diff / 86400)}일 전`;
+}
+
+// 1분마다 상대시간 갱신 (별도 인터벌)
+setInterval(() => {
+  document.querySelectorAll('[data-ts-key]').forEach(el => {
+    const key = el.getAttribute('data-ts-key');
+    const ts = state.indicatorTs?.[key];
+    const txt = relativeTime(ts);
+    if (txt) el.textContent = txt;
+  });
+}, 30000); // 30초마다 갱신
+
+
+// 타임스탬프 뱃지 일괄 갱신
+function updateTsBadges() {
+  document.querySelectorAll('[data-ts-key]').forEach(el => {
+    const key = el.getAttribute('data-ts-key');
+    const ts = state.indicatorTs?.[key];
+    const txt = relativeTime(ts);
+    el.textContent = txt ? ' · ' + txt : '';
+  });
+}
 // ══════════════════════════════════════════════════════════
 // 3축 독립 판정 시스템
 // X축: 심리 공포도 (역발상 매수 타이밍)
@@ -2462,15 +2502,16 @@ async function refreshAll() {
     if (prices && typeof prices === 'object') {
       Object.entries(prices).forEach(([k, v]) => { if (v) state.prices[k] = v; });
     }
-    if (fx?.price) { state.fxRate = fx.price; state.fxPrevClose = fx.prevClose; state.fxData = fx; }
-    if (fg !== null) state.fearGreed = fg;
-    if (vix) state.vix = vix;
-    if (pcr) state.pcr = pcr;
-    if (coinFg) state.coinFearGreed = coinFg;
-    if (krFg) state.koreanFearGreed = krFg;
-    if (yieldData) state.yieldSpread = yieldData;
-    if (hygData) state.hygData = hygData;
-    if (spData) state.spTrend = spData;
+    const now = Date.now();
+    if (fx?.price) { state.fxRate = fx.price; state.fxPrevClose = fx.prevClose; state.fxData = fx; state.indicatorTs.fx = now; }
+    if (fg !== null) { state.fearGreed = fg; state.indicatorTs.fg = now; }
+    if (vix) { state.vix = vix; state.indicatorTs.vix = now; }
+    if (pcr) { state.pcr = pcr; state.indicatorTs.pcr = now; }
+    if (coinFg) { state.coinFearGreed = coinFg; state.indicatorTs.coinFg = now; }
+    if (krFg) { state.koreanFearGreed = krFg; state.indicatorTs.krFg = now; }
+    if (yieldData) { state.yieldSpread = yieldData; state.indicatorTs.yieldSpread = now; }
+    if (hygData) { state.hygData = hygData; state.indicatorTs.hygData = now; }
+    if (spData) { state.spTrend = spData; state.indicatorTs.spTrend = now; }
 
     state.lastUpdate = new Date();
     document.getElementById('lastUpdate').textContent =
@@ -2568,6 +2609,7 @@ function _doRenderAll() {
   // 항상 실행해야 하는 함수 (모든 탭에 영향)
   const always = [renderDashboard, updateFGMeter, renderVixFxPanel, renderHedgePanel, renderSignalPanel, renderRebalAccountBtns, renderHoldings, renderDividendTab];
   always.forEach(fn => { try { fn(); } catch(e) { console.error(fn.name + ' 오류:', e); } });
+  try { updateTsBadges(); } catch(e) {}
 }
 
 function renderVixFxPanel() {
